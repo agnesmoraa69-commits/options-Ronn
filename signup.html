@@ -35,7 +35,43 @@
   const SUPABASE_URL = 'https://qmzhzkwrinfhodsdaio.supabase.co';
   const SUPABASE_KEY = sb_publishable_08YlsDvQpZ7bxjA_YV4kXQ_HVEpOfFJ
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+</script><script>
+  async function createAccount(){
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+    const pw = document.getElementById('password').value;
+    const confirm = document.getElementById('confirm').value;
+    const err = document.getElementById('err') || document.getElementById('errMessage');
+    
+    if(err) err.style.display = 'none';
+
+    if(!name || !email || !pw || !confirm){
+      if(err) { err.textContent = 'Please fill in all fields.'; err.style.display = 'block'; }
+      return;
+    }
+
+    if(pw !== confirm){
+      if(err) { err.textContent = 'Passwords do not match.'; err.style.display = 'block'; }
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: pw,
+      options: {
+        data: { full_name: name }
+      }
+    });
+
+    if (error) {
+      if(err) { err.textContent = error.message; err.style.display = 'block'; }
+    } else {
+      alert('Account created successfully!');
+      window.location.href = 'login.html';
+    }
+  }
 </script>
+
 <body>
 
 <div class="brand"><span class="logo">📈</span> Ron Options</div>
