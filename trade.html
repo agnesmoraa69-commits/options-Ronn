@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ron Options - Trade</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, Roboto, Arial, sans-serif; }
+  body { background: #0d0a1a; color: #fff; padding-bottom: 70px; }
+  .promo { background: linear-gradient(90deg,#7b2ff7,#e91e8c); padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+  .promo .msg b { display:block; font-size:14px; }
+  .promo button { background:#fff; color:#7b2ff7; border:none; padding:8px 16px; border-radius:20px; font-weight:bold; }
+  .promo .close { background:none; color:#fff; font-size:18px; margin-left:8px; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; }
+  .topbar .left { display:flex; align-items:center; gap:8px; }
+  .icon-btn { background:#2a1f4a; border:none; color:#fff; width:34px; height:34px; border-radius:8px; font-size:18px; }
+  .acct { background:#6a2fd6; border:none; color:#fff; padding:6px 10px; border-radius:8px; font-weight:bold; }
+  .acct.r { background:#2a1f4a; display:flex; align-items:center; gap:4px; }
+  .balance { color:#4ade80; font-weight:bold; font-size:16px; }
+  .deposit { background:#7b2ff7; border:none; color:#fff; padding:8px 18px; border-radius:20px; font-weight:bold; }
+  .bell { font-size:20px; }
+  .tabs { display:flex; overflow-x:auto; gap:8px; padding:8px 14px; }
+  .tab { background:#1a1430; border:1px solid #2a2050; color:#999; padding:8px 14px; border-radius:8px; white-space:nowrap; font-size:14px; }
+  .tab.active { background:#3a1f6a; border-color:#7b2ff7; color:#fff; }
+  .chart-box { background:#140f28; margin:8px 14px; border-radius:10px; padding:12px; }
+  .chart-head { display:flex; justify-content:space-between; align-items:center; font-size:13px; }
+  .chart-head .price { color:#4ade80; }
+  .zoom { background:#231a45; padding:4px 10px; border-radius:6px; }
+  svg { width:100%; height:140px; display:block; }
+  .times { display:flex; justify-content:space-between; font-size:11px; color:#666; margin-top:4px; }
+  .section-label { padding:10px 14px 4px; font-size:13px; color:#aaa; }
+  .digits { display:grid; grid-template-columns:repeat(10,1fr); gap:4px; padding:0 14px; }
+  .digit { background:#1a1430; border:2px solid transparent; border-radius:8px; padding:8px 2px; text-align:center; font-size:14px; font-weight:bold; position:relative; }
+  .digit small { display:block; font-size:9px; font-weight:normal; color:#999; }
+  .digit.selected { border-color:#3b6cf7; background:#1e2a5a; }
+  .digit.hot small { color:#4ade80; }
+  .digit.cold small { color:#f87171; }
+  .mode-toggle { display:flex; margin:12px 14px; background:#1a1430; border-radius:8px; overflow:hidden; }
+  .mode-toggle button { flex:1; padding:12px; border:none; background:transparent; color:#999; font-weight:bold; }
+  .mode-toggle button.active { background:#7b2ff7; color:#fff; }
+  .panel-row { display:flex; gap:8px; margin:0 14px 8px; }
+  .field { flex:1; background:#140f28; border-radius:8px; padding:8px; }
+  .field label { font-size:11px; display:block; margin-bottom:4px; }
+  .field input { width:100%; background:transparent; border:none; color:#fff; font-size:16px; font-weight:bold; }
+  .tp label { color:#4ade80; }
+  .sl label { color:#f87171; }
+  .mult label { color:#facc15; }
+  .stats { margin:0 14px 8px; background:#140f28; padding:8px; border-radius:8px; text-align:center; font-size:12px; color:#999; display:flex; justify-content:space-between; }
+  .stake-row { display:flex; align-items:center; gap:6px; margin:0 14px 8px; background:#140f28; padding:8px; border-radius:8px; }
+  .stake-row .label { font-size:12px; color:#aaa; width:40px; }
+  .stake-row button.pm { background:#2a1f4a; color:#fff; border:none; width:30px; height:30px; border-radius:6px; font-size:16px; }
+  .stake-input { flex:1; background:#1a1430; text-align:center; border:none; color:#fff; font-weight:bold; font-size:16px; border-radius:6px; padding:6px; }
+  .presets { display:flex; gap:4px; overflow-x:auto; }
+  .presets button { background:#1a1430; border:none; color:#fff; padding:6px 10px; border-radius:6px; font-size:12px; white-space:nowrap; }
+  .presets button.active { background:#3b6cf7; }
+  .trade-row { display:flex; gap:8px; margin:0 14px 14px; }
+  .trade-btn { flex:1; border:none; border-radius:10px; padding:14px; color:#fff; text-align:left; }
+  .trade-btn .pct { font-size:13px; font-weight:normal; }
+  .trade-btn .payout { font-size:12px; opacity:0.85; }
+  .even { background:#1fa15c; }
+  .odd { background:#d5352f; }
+  .flash { animation: flash 0.6s; }
+  @keyframes flash { 0%{ filter:brightness(1.8);} 100%{filter:brightness(1);} }
+  .positions-panel, .ai-panel { display:none; padding:14px; }
+  .positions-panel.show, .ai-panel.show { display:block; }
+  .trade-view.hide { display:none; }
+  .pos-item { background:#140f28; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; font-size:13px; }
+  .pos-item .win { color:#4ade80; }
+  .pos-item .loss { color:#f87171; }
+  .bottom-nav { position:fixed; bottom:0; left:0; right:0; background:#140f28; display:flex; justify-content:space-around; padding:8px 0; border-top:1px solid #2a2050; }
+  .nav-item { text-align:center; color:#999; font-size:11px; background:none; border:none; }
+  .nav-item.active { color:#a855f7; }
+  .nav-item .ic { font-size:18px; display:block; }
+  .drawer { position:fixed; top:0; left:0; bottom:0; width:75%; background:#140f28; transform:translateX(-100%); transition:0.25s; z-index:20; padding:16px; }
+  .drawer.open { transform:translateX(0); }
+  .drawer-item { padding:14px 0; border-bottom:1px solid #2a2050; }
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; z-index:15; }
+  .overlay.show { display:block; }
+  .modal { position:fixed; left:14px; right:14px; top:30%; background:#1a1430; border-radius:12px; padding:18px; z-index:30; display:none; }
+  .modal.show { display:block; }
+  .modal h3 { margin-bottom:10px; }
+  .modal button { background:#7b2ff7; border:none; color:#fff; padding:10px 20px; border-radius:8px; margin-top:10px; }
+  .toast { position:fixed; top:70px; left:50%; transform:translateX(-50%); background:#1a1430; padding:10px 18px; border-radius:8px; font-size:13px; z-index:40; opacity:0; transition:0.3s; border:1px solid #333; }
+  .toast.show { opacity:1; }
+</style>
+</head>
+<body>
+
+<div class="promo" id="promo">
+  <span class="msg"><b id="promoTitle">Get the Ron Options App</b><span id="promoSub">Get a better trading experience</span></span>
+  <div style="display:flex;align-items:center;">
+    <button onclick="toast('Opening app download link')">Download</button>
+    <button class="close" onclick="document.getElementById('promo').style.display='none'">✕</button>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="left">
+    <button class="icon-btn" onclick="openDrawer()">☰</button>
+    <button class="acct" onclick="toggleAccount()">P</button>
+    <button class="acct r" onclick="toast('Switch sub-account')">R <span>▾</span></button>
+  </div>
+  <div class="balance" id="balance">$10000.00</div>
+  <button class="deposit" onclick="openModal('deposit')">Deposit</button>
+  <button class="bell" onclick="openModal('notif')">🔔</button>
+</div>
+
+<div class="tabs">
+  <button class="tab" data-mode="matches" onclick="setMode(this,'matches')">Matches/Differs</button>
+  <button class="tab active" data-mode="evenodd" onclick="setMode(this,'evenodd')">Even/Odd</button>
+  <button class="tab" data-mode="over" onclick="setMode(this,'over')">Over/Under</button>
+  <button class="tab" data-mode="rises" onclick="setMode(this,'rises')">Rises/Falls</button>
+</div>
+
+<div id="tradeView">
+  <div class="chart-box">
+    <div class="chart-head">
+      <span onclick="openModal('symbol')">⚡ Vol 10 (1s) <span class="price" id="priceNow">9555.62</span> <span id="priceChg" style="color:#4ade80">+0.61%</span></span>
+      <span class="zoom" onclick="openModal('zoom')" id="zoomLabel">100% ▾</span>
+    </div>
+    <svg id="chartSvg" viewBox="0 0 300 100" preserveAspectRatio="none">
+      <polyline id="chartLine" fill="none" stroke="#fff" stroke-width="1.5" points=""/>
+      <line id="markerLine" x1="0" x2="300" stroke="#7b2ff7" stroke-dasharray="3,3" stroke-width="1"/>
+    </svg>
+    <div class="times" id="timeLabels"><span>t-45</span><span>t-30</span><span>t-15</span><span>now</span></div>
+  </div>
+
+  <div class="section-label">Select Digit Target</div>
+  <div class="digits" id="digitsRow"></div>
+
+  <div class="mode-toggle">
+    <button class="active" id="autoBtn" onclick="setAutoMode(true)">AUTO</button>
+    <button id="manualBtn" onclick="setAutoMode(false)">MANUAL</button>
+  </div>
+
+  <div id="autoFields">
+    <div class="panel-row">
+      <div class="field tp"><label>TARGET PROFIT ($)</label><input id="targetProfit" value="5" oninput="recalc()"></div>
+      <div class="field sl"><label>STOP LOSS ($)</label><input id="stopLoss" value="999" oninput="recalc()"></div>
+      <div class="field mult"><label>MULTIPLIER</label><input id="multiplier" value="x2" onclick="openModal('mult')" readonly></div>
+    </div>
+    <div class="stats"><span id="statsLine">Last 9T · 7W · 2L</span><span id="pnlLine" style="color:#4ade80">+$6.55</span></div>
+  </div>
+
+  <div class="stake-row">
+    <span class="label">Stake</span>
+    <button class="pm" onclick="changeStake(-1)">-</button>
+    <input class="stake-input" id="stakeInput" value="10" oninput="recalc()">
+    <button class="pm" onclick="changeStake(1)">+</button>
+  </div>
+  <div class="presets" id="presets"></div>
+
+  <div class="trade-row">
+    <button class="trade-btn even" id="evenBtn" onclick="placeTrade('Even')">
+      Even <span class="pct" id="evenPct">95.2%</span><br><span class="payout">Payout: $<span id="evenPayout">19.52</span></span>
+    </button>
+    <button class="trade-btn odd" id="oddBtn" onclick="placeTrade('Odd')">
+      Odd <span class="pct" id="oddPct">95.2%</span><br><span class="payout">Payout: $<span id="oddPayout">19.52</span></span>
+    </button>
+  </div>
+</div>
+
+<div class="positions-panel" id="positionsPanel"><div id="posList"></div></div>
+<div class="ai-panel" id="aiPanel">
+  <h3>AI Signals</h3>
+  <p style="color:#999;margin-top:8px;font-size:13px">AI trade suggestions will appear here based on recent market patterns.</p>
+</div>
+
+<div class="bottom-nav">
+  <button class="nav-item active" id="navTrade" onclick="showView('trade')"><span class="ic">📈</span>Trade</button>
+  <button class="nav-item" id="navAI" onclick="showView('ai')"><span class="ic">🤖</span>AI</button>
+  <button class="nav-item" id="navPos" onclick="showView('positions')"><span class="ic">💼</span>Positions</button>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeAll()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-item" onclick="toast('Account settings')">⚙️ Account Settings</div>
+  <div class="drawer-item" onclick="toast('Opening trade history')">📜 Trade History</div>
+  <div class="drawer-item" onclick="toast('Opening help center')">❓ Help</div>
+  <div class="drawer-item" onclick="toast('Logged out')">🚪 Log Out</div>
+</div>
+
+<div class="modal" id="modal">
+  <h3 id="modalTitle"></h3>
+  <div id="modalBody"></div>
+  <button onclick="closeAll()">Close</button>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+let balance = 10000.00;
+let stake = 10;
+let selectedDigit = 0;
+let autoMode = true;
+let wins = 7, losses = 2, trades = 9;
+let chartData = [50,55,52,58,60,57,65,70,68,75,80,78];
+let symbol = "Vol 10 (1s)";
+let currentTab = 'evenodd';
+
+const digitProbs = [9.6,11.4,10.0,10.0,9.0,12.8,10.0,8.6,10.6,7.8];
+const presetVals = [1,5,10,25,50,100];
+
+function renderDigits(){
+  const row = document.getElementById('digitsRow');
+  row.innerHTML = '';
+  digitProbs.forEach((p,i)=>{
+    const d = document.createElement('div');
+    d.className = 'digit' + (i===selectedDigit?' selected':'') + (i===1?' hot':'') + (i===9?' cold':'');
+    d.innerHTML = i + '<small>' + p.toFixed(1) + '%</small>';
+    d.onclick = ()=>{ selectedDigit=i; renderDigits(); recalc(); };
+    row.appendChild(d);
+  });
+}
+
+function renderPresets(){
+  const p = document.getElementById('presets');
+  p.innerHTML = '';
+  presetVals.forEach(v=>{
+    const b = document.createElement('button');
+    b.textContent = '$'+v;
+    if(v===stake) b.classList.add('active');
+    b.onclick = ()=>{ stake=v; document.getElementById('stakeInput').value=v; renderPresets(); recalc(); };
+    p.appendChild(b);
+  });
+}
+
+function changeStake(dir){
+  stake = Math.max(1, stake + dir);
+  document.getElementById('stakeInput').value = stake;
+  renderPresets();
+  recalc();
+}
+
+function recalc(){
+  stake = parseFloat(document.getElementById('stakeInput').value) || 0;
+  const payout = (stake * 1.952).toFixed(2);
+  document.getElementById('evenPayout').textContent = payout;
+  document.getElementById('oddPayout').textContent = payout;
+  const pnl = (stake * 0.655).toFixed(2);
+  document.getElementById('pnlLine').textContent = '+$' + pnl;
+}
+
+function setAutoMode(isAuto){
+  autoMode = isAuto;
+  document.getElementById('autoBtn').classList.toggle('active', isAuto);
+  document.getElementById('manualBtn').classList.toggle('active', !isAuto);
+  document.getElementById('autoFields').style.display = isAuto ? 'block' : 'none';
+}
+
+function setMode(el, mode){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentTab = mode;
+  toast('Switched to ' + el.textContent);
+  drawChart();
+}
+
+function drawChart(){
+  chartData = chartData.map(v => Math.max(20, Math.min(90, v + (Math.random()*10-5))));
+  const w = 300, h = 100;
+  const min = Math.min(...chartData), max = Math.max(...chartData);
+  const pts = chartData.map((v,i)=>{
+    const x = i/(chartData.length-1)*w;
+    const y = h - ((v-min)/(max-min||1))*h;
+    return x+','+y;
+  }).join(' ');
+  document.getElementById('chartLine').setAttribute('points', pts);
+  document.getElementById('markerLine').setAttribute('y1', h - ((chartData[chartData.length-1]-min)/(max-min||1))*h);
+  document.getElementById('markerLine').setAttribute('y2', h - ((chartData[chartData.length-1]-min)/(max-min||1))*h);
+
+  const price = (9550 + chartData[chartData.length-1]).toFixed(2);
+  document.getElementById('priceNow').textContent = price;
+  const now = new Date();
+  const t = (s)=> new Date(now-s*1000).toTimeString().slice(0,8);
+  document.getElementById('timeLabels').innerHTML =
+    `<span>${t(45)}</span><span>${t(30)}</span><span>${t(15)}</span><span>${t(0)}</span>`;
+}
+
+function placeTrade(side){
+  if(balance < stake){ toast('Insufficient balance'); return; }
+  balance -= stake;
+  const win = Math.random() < 0.55;
+  const btn = document.getElementById(side==='Even'?'evenBtn':'oddBtn');
+  btn.classList.add('flash');
+  setTimeout(()=>btn.classList.remove('flash'), 600);
+
+  trades++;
+  if(win){
+    wins++;
+    const winAmt = stake * 1.952;
+    balance += winAmt;
+    toast('Win +$' + winAmt.toFixed(2));
+    addPosition(side, stake, winAmt.toFixed(2), true);
+  } else {
+    losses++;
+    toast('Loss -$' + stake.toFixed(2));
+    addPosition(side, stake, -stake, false);
+  }
+  document.getElementById('statsLine').textContent = `Last ${trades}T · ${wins}W · ${losses}L`;
+  updateBalance();
+}
+
+function addPosition(side, stakeAmt, result, win){
+  const list = document.getElementById('posList');
+  const item = document.createElement('div');
+  item.className = 'pos-item';
+  item.innerHTML = `<span>${side} · $${stakeAmt} · Digit ${selectedDigit}</span><span class="${win?'win':'loss'}">${win?'+':''}${result}</span>`;
+  list.prepend(item);
+}
+
+function updateBalance(){
+  document.getElementById('balance').textContent = '$' + balance.toFixed(2);
+}
+
+function showView(view){
+  document.getElementById('tradeView').classList.toggle('hide', view!=='trade');
+  document.getElementById('positionsPanel').classList.toggle('show', view==='positions');
+  document.getElementById('aiPanel').classList.toggle('show', view==='ai');
+  document.getElementById('navTrade').classList.toggle('active', view==='trade');
+  document.getElementById('navAI').classList.toggle('active', view==='ai');
+  document.getElementById('navPos').classList.toggle('active', view==='positions');
+}
+
+function openDrawer(){
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+}
+function closeAll(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('modal').classList.remove('show');
+}
+function openModal(type){
+  const titles = {
+    deposit: 'Deposit Funds', notif: 'Notifications',
+    symbol: 'Select Market', zoom: 'Chart Zoom', mult: 'Select Multiplier'
+  };
+  const bodies = {
+    deposit: 'Choose a payment method to add funds to your account.',
+    notif: 'No new notifications.',
+    symbol: 'Vol 10 (1s), Vol 25 (1s), Vol 50 (1s), Vol 75 (1s), Vol 100 (1s)',
+    zoom: '50%, 100%, 150%, 200%',
+    mult: 'x1, x2, x3, x5'
+  };
+  document.getElementById('modalTitle').textContent = titles[type] || '';
+  document.getElementById('modalBody').textContent = bodies[type] || '';
+  document.getElementById('modal').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+}
+function toggleAccount(){ toast('Switched account'); }
+function toast(msg){
+  const t = document.getElementById('toastEl');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+renderDigits();
+renderPresets();
+recalc();
+drawChart();
+setInterval(drawChart, 2000);
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ron Options</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; font-family:-apple-system,Roboto,Arial,sans-serif; }
+  body { background:#0d0a1a; color:#fff; }
+  .promo { background:linear-gradient(90deg,#7b2ff7,#e91e8c); padding:10px 14px; display:flex; align-items:center; justify-content:space-between; font-size:13px; }
+  .promo b { display:block; font-size:14px; }
+  .promo button { background:#fff; color:#7b2ff7; border:none; padding:8px 16px; border-radius:20px; font-weight:bold; }
+  .promo .close { background:none; color:#fff; font-size:18px; margin-left:8px; }
+  .nav { display:flex; align-items:center; justify-content:space-between; padding:14px; }
+  .brand { display:flex; align-items:center; gap:8px; font-weight:bold; font-size:18px; }
+  .brand .logo { background:linear-gradient(135deg,#e91e8c,#7b2ff7); width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; }
+  .nav .right { display:flex; align-items:center; gap:14px; }
+  .nav a { color:#ccc; text-decoration:none; font-size:14px; }
+  .get-started { background:#7b2ff7; color:#fff; border:none; padding:8px 16px; border-radius:20px; font-weight:bold; font-size:14px; }
+  .badge { display:block; text-align:center; margin:20px auto 0; background:#1a1440; border:1px solid #3a2a70; color:#a78bfa; font-size:12px; padding:6px 14px; border-radius:20px; width:fit-content; }
+  .hero { text-align:center; padding:24px 20px; }
+  .hero h1 { font-size:32px; line-height:1.2; }
+  .hero h1 span { background:linear-gradient(90deg,#e91e8c,#a855f7); -webkit-background-clip:text; background-clip:text; color:transparent; display:block; }
+  .hero p { color:#aaa; font-size:14px; margin:16px 0; line-height:1.5; }
+  .cta { display:block; width:100%; background:#7b2ff7; color:#fff; border:none; padding:14px; border-radius:10px; font-weight:bold; font-size:15px; margin-bottom:10px; }
+  .demo { display:block; width:100%; background:transparent; border:none; color:#ccc; padding:10px; font-size:14px; }
+  .features { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px 20px 30px; }
+  .feature { background:#140f28; border:1px solid #241d45; border-radius:20px; padding:8px 12px; font-size:12px; text-align:center; color:#ccc; }
+</style>
+</head>
+<body>
+
+<div class="promo" id="promo">
+  <span><b>Get the Ron Options App</b><span>Get a better trading experience</span></span>
+  <div style="display:flex;align-items:center;">
+    <button onclick="toast('Opening app download')">Download</button>
+    <button class="close" onclick="document.getElementById('promo').style.display='none'">✕</button>
+  </div>
+</div>
+
+<div class="nav">
+  <div class="brand"><span class="logo">📈</span> Ron Options</div>
+  <div class="right">
+    <a href="login.html">Log in</a>
+    <button class="get-started" onclick="location.href='signup.html'">Get Started</button>
+  </div>
+</div>
+
+<div class="hero">
+  <span class="badge">Trusted by traders worldwide</span>
+  <h1>Master the Markets, <span>On Your Terms</span></h1>
+  <p>Tap into 100+ global markets with instant execution and payouts up to 95%. Fund with M-Pesa and start from just $10.</p>
+  <button class="cta" onclick="location.href='signup.html'">Get Started — It's Free →</button>
+  <button class="demo" onclick="location.href='trade.html'">▷ Try Demo</button>
+</div>
+
+<div class="features">
+  <div class="feature">⚡ &lt;1s execution</div>
+  <div class="feature">💰 Up to 95% payout</div>
+  <div class="feature">🔒 Bank-level security</div>
+  <div class="feature">🆓 Zero fees</div>
+</div>
+
+<script>
+function toast(m){ alert(m); }
+</script>
+</body>
+</html>
