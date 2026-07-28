@@ -27,6 +27,12 @@
   .features { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px 20px 30px; }
   .feature { background:#140f28; border:1px solid #241d45; border-radius:20px; padding:8px 12px; font-size:12px; text-align:center; color:#ccc; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://qmzhzkwrinfhodsdaio.supabase.co';
+  const SUPABASE_KEY = sb_publishable_08YlsDvQpZ7bxjA_YV4kXQ_HVEpOfFJ
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+</script>
 </head>
 <body>
 
