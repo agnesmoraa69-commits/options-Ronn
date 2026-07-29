@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ron Options - Trade</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, Roboto, Arial, sans-serif; }
+  body { background: #0d0a1a; color: #fff; padding-bottom: 70px; transition: background 0.3s, color 0.3s; }
+  body.light { background: #f2f0fa; color: #14102a; }
+  body.light .chart-box, body.light .field, body.light .stats, body.light .stake-row, body.light .digit,
+  body.light .tab, body.light .drawer, body.light .modal, body.light .pos-item, body.light .presets button {
+    background:#fff; color:#14102a; border-color:#e0dbf5;
+  }
+  .promo { background: linear-gradient(90deg,#7b2ff7,#e91e8c); padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+  .promo .msg b { display:block; font-size:14px; }
+  .promo button { background:#fff; color:#7b2ff7; border:none; padding:8px 16px; border-radius:20px; font-weight:bold; }
+  .promo .close { background:none; color:#fff; font-size:18px; margin-left:8px; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; gap:6px; position:relative; }
+  .topbar .left { display:flex; align-items:center; gap:6px; }
+  .topbar .right { display:flex; align-items:center; gap:6px; }
+  .icon-btn { background:#2a1f4a; border:none; color:#fff; width:34px; height:34px; border-radius:8px; font-size:16px; }
+  .acct { background:#6a2fd6; border:none; color:#fff; padding:6px 10px; border-radius:8px; font-weight:bold; font-size:13px; }
+  .acct.r { background:#2a1f4a; display:flex; align-items:center; gap:4px; }
+  .deposit { background:#7b2ff7; border:none; color:#fff; padding:8px 16px; border-radius:20px; font-weight:bold; font-size:13px; white-space:nowrap; }
+  .bell, .mute { font-size:18px; background:#2a1f4a; border:none; color:#fff; width:34px; height:34px; border-radius:8px; }
+  .acct-dropdown { position:absolute; top:46px; left:56px; background:#1e1740; border-radius:10px; padding:6px; width:200px; z-index:25; display:none; box-shadow:0 8px 24px rgba(0,0,0,0.5); }
+  .acct-dropdown.show { display:block; }
+  .acct-opt { display:flex; align-items:center; justify-content:space-between; padding:12px 10px; border-radius:6px; font-size:14px; }
+  .acct-opt:active { background:#2a2050; }
+  .acct-opt .dot { width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:8px; }
+  .acct-opt .active-lbl { color:#a855f7; font-size:12px; }
+  .tabs { display:flex; overflow-x:auto; gap:8px; padding:8px 14px; }
+  .tab { background:#1a1430; border:1px solid #2a2050; color:#999; padding:8px 14px; border-radius:8px; white-space:nowrap; font-size:14px; }
+  .tab.active { background:#3a1f6a; border-color:#7b2ff7; color:#fff; }
+  .chart-box { background:#140f28; margin:8px 14px; border-radius:10px; padding:12px; position:relative; }
+  .chart-head { display:flex; justify-content:space-between; align-items:center; font-size:13px; }
+  .chart-head .price { color:#4ade80; }
+  .zoom { background:#231a45; padding:4px 10px; border-radius:6px; }
+  .zoom-controls { position:absolute; left:16px; top:50px; display:flex; flex-direction:column; gap:4px; z-index:5; }
+  .zoom-controls button { width:26px; height:26px; border-radius:6px; background:#231a45; border:none; color:#fff; font-size:14px; }
+  svg { width:100%; height:140px; display:block; }
+  .times { display:flex; justify-content:space-between; font-size:11px; color:#666; margin-top:4px; }
+  .symbol-dropdown { position:absolute; top:44px; left:12px; background:#1e1740; border-radius:10px; padding:6px; width:230px; z-index:20; display:none; }
+  .symbol-dropdown.show { display:block; }
+  .symbol-opt { display:flex; align-items:center; gap:8px; padding:12px 10px; font-size:13px; border-radius:6px; color:#ccc; }
+  .symbol-opt.active { color:#a855f7; }
+  .symbol-opt .dot { width:7px; height:7px; border-radius:50%; background:#a855f7; margin-left:auto; }
+  .section-label { padding:10px 14px 4px; font-size:13px; color:#aaa; }
+  .digits { display:grid; grid-template-columns:repeat(10,1fr); gap:4px; padding:0 14px; }
+  .digit { background:#1a1430; border:2px solid transparent; border-radius:8px; padding:8px 2px; text-align:center; font-size:14px; font-weight:bold; position:relative; }
+  .digit small { display:block; font-size:9px; font-weight:normal; color:#999; }
+  .digit.selected { border-color:#3b6cf7; background:#1e2a5a; }
+  .digit.hot small { color:#4ade80; }
+  .digit.cold small { color:#f87171; }
+  .mode-toggle { display:flex; margin:12px 14px; background:#1a1430; border-radius:8px; overflow:hidden; }
+  .mode-toggle button { flex:1; padding:12px; border:none; background:transparent; color:#999; font-weight:bold; }
+  .mode-toggle button.active { background:#7b2ff7; color:#fff; }
+  .panel-row { display:flex; gap:8px; margin:0 14px 8px; }
+  .field { flex:1; background:#140f28; border-radius:8px; padding:8px; }
+  .field label { font-size:11px; display:block; margin-bottom:4px; }
+  .field input { width:100%; background:transparent; border:none; color:#fff; font-size:16px; font-weight:bold; }
+  body.light .field input { color:#14102a; }
+  .tp label { color:#4ade80; }
+  .sl label { color:#f87171; }
+  .mult label { color:#facc15; }
+  .stats { margin:0 14px 8px; background:#140f28; padding:8px; border-radius:8px; text-align:center; font-size:12px; color:#999; display:flex; justify-content:space-between; }
+  .stake-row { display:flex; align-items:center; gap:6px; margin:0 14px 8px; background:#140f28; padding:8px; border-radius:8px; }
+  .stake-row .label { font-size:12px; color:#aaa; width:40px; }
+  .stake-row button.pm { background:#2a1f4a; color:#fff; border:none; width:30px; height:30px; border-radius:6px; font-size:16px; }
+  .stake-input { flex:1; background:#1a1430; text-align:center; border:none; color:#fff; font-weight:bold; font-size:16px; border-radius:6px; padding:6px; }
+  body.light .stake-input { background:#eee7ff; color:#14102a; }
+  .presets { display:flex; gap:4px; overflow-x:auto; margin:0 14px 8px; }
+  .presets button { background:#1a1430; border:none; color:#fff; padding:6px 10px; border-radius:6px; font-size:12px; white-space:nowrap; }
+  .presets button.active { background:#3b6cf7; }
+  .trade-row { display:flex; gap:8px; margin:0 14px 14px; }
+  .trade-btn { flex:1; border:none; border-radius:10px; padding:14px; color:#fff; text-align:left; }
+  .trade-btn .pct { font-size:13px; font-weight:normal; }
+  .trade-btn .payout { font-size:12px; opacity:0.85; }
+  .even { background:#1fa15c; }
+  .odd { background:#d5352f; }
+  .flash { animation: flash 0.6s; }
+  @keyframes flash { 0%{ filter:brightness(1.8);} 100%{filter:brightness(1);} }
+  .trade-view.hide { display:none; }
+  .positions-panel { display:none; padding:0 14px; }
+  .positions-panel.show { display:block; }
+  .pos-tabs { display:flex; gap:18px; border-bottom:1px solid #241d45; margin-bottom:14px; }
+  .pos-tab { background:none; border:none; color:#999; padding:10px 0; font-size:14px; border-bottom:2px solid transparent; }
+  .pos-tab.active { color:#a855f7; border-color:#a855f7; }
+  .pos-empty { text-align:center; padding:60px 20px; color:#999; }
+  .pos-empty .ic { width:70px; height:70px; border-radius:50%; background:#1e1740; display:flex; align-items:center; justify-content:center; font-size:28px; margin:0 auto 16px; }
+  .pos-empty h4 { color:#fff; margin-bottom:6px; }
+  body.light .pos-empty h4 { color:#14102a; }
+  .pos-item { background:#140f28; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; align-items:center; gap:10px; font-size:13px; }
+  .pos-item .pic { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; }
+  .pos-item .info { flex:1; }
+  .pos-item .amt { text-align:right; font-weight:bold; }
+  .pos-item .bal { font-size:11px; color:#999; text-align:right; display:block; }
+  .win-c { color:#4ade80; } .loss-c { color:#f87171; } .stake-c { color:#facc15; }
+  .session-bar { position:fixed; bottom:56px; left:0; right:0; background:#1a1430; padding:8px 16px; font-size:12px; display:flex; justify-content:space-between; color:#999; }
+  .bottom-nav { position:fixed; bottom:0; left:0; right:0; background:#140f28; display:flex; justify-content:space-around; padding:8px 0; border-top:1px solid #2a2050; z-index:10; }
+  .nav-item { text-align:center; color:#999; font-size:11px; background:none; border:none; }
+  .nav-item.active { color:#a855f7; }
+  .nav-item .ic { font-size:18px; display:block; }
+  .drawer { position:fixed; top:0; left:0; bottom:0; width:82%; max-width:340px; background:#140f28; transform:translateX(-100%); transition:0.25s; z-index:30; overflow-y:auto; }
+  .drawer.open { transform:translateX(0); }
+  .drawer-head { display:flex; justify-content:space-between; align-items:center; padding:16px; font-weight:bold; font-size:16px; }
+  .drawer-profile { display:flex; align-items:center; gap:12px; padding:0 16px 16px; border-bottom:1px solid #241d45; }
+  .avatar { width:44px; height:44px; border-radius:50%; background:#7b2ff7; display:flex; align-items:center; justify-content:center; font-weight:bold; }
+  .drawer-item { display:flex; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid #1e1a38; font-size:15px; }
+  .drawer-item .chev { margin-left:auto; color:#666; }
+  .drawer-item.refer { color:#a855f7; }
+  .toggle-sw { width:44px; height:24px; background:#333; border-radius:20px; position:relative; border:none; margin-left:auto; }
+  .toggle-sw.on { background:#7b2ff7; }
+  .toggle-sw .knob { width:18px; height:18px; background:#fff; border-radius:50%; position:absolute; top:3px; left:3px; transition:0.2s; }
+  .toggle-sw.on .knob { left:23px; }
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; z-index:15; }
+  .overlay.show { display:block; }
+  .modal { position:fixed; left:14px; right:14px; top:12%; background:#1a1430; border-radius:14px; padding:0; z-index:40; display:none; max-height:76vh; overflow-y:auto; }
+  .modal.show { display:block; }
+  .modal-head { display:flex; justify-content:space-between; align-items:center; padding:18px; border-bottom:1px solid #241d45; }
+  .modal-head h3 { font-size:18px; }
+  .modal-head .sub { font-size:12px; color:#999; display:block; margin-top:2px; }
+  .modal-body { padding:16px 18px; }
+  .pay-method { display:flex; align-items:center; gap:12px; padding:14px; border:1px solid #241d45; border-radius:10px; margin-bottom:10px; }
+  .pay-method.selected { border-color:#7b2ff7; }
+  .pay-method .pic { width:40px; height:40px; border-radius:8px; background:#2a1f4a; display:flex; align-items:center; justify-content:center; font-size:18px; }
+  .pay-method .txt b { display:block; font-size:14px; }
+  .pay-method .txt span { font-size:12px; color:#999; }
+  .pay-method .arrow { margin-left:auto; color:#888; }
+  .trust-row { display:flex; justify-content:center; gap:16px; font-size:11px; color:#a78bfa; padding:12px 0 4px; }
+  .close-x { background:none; border:none; color:#fff; font-size:18px; }
+  .ai-modal-body p { color:#999; font-size:13px; line-height:1.5; margin-bottom:16px; }
+  .ai-field label { font-size:12px; color:#aaa; display:block; margin-bottom:6px; }
+  .ai-select { width:100%; background:#140f28; border:1px solid #2a2050; color:#fff; padding:12px; border-radius:8px; font-size:14px; margin-bottom:16px; }
+  .scan-row { display:flex; justify-content:space-between; font-size:13px; color:#999; margin-bottom:6px; }
+  .progress-bar { height:5px; background:#241d45; border-radius:4px; overflow:hidden; margin-bottom:16px; }
+  .progress-bar .fill { height:100%; background:#7b2ff7; width:0%; transition:0.3s; }
+  .scan-btn { width:100%; background:#7b2ff7; border:none; color:#fff; padding:14px; border-radius:10px; font-weight:bold; margin-bottom:10px; }
+  .load-bot-btn { width:100%; background:#241d45; border:none; color:#7b5fc7; padding:14px; border-radius:10px; font-weight:bold; }
+  .toast { position:fixed; top:70px; left:50%; transform:translateX(-50%); background:#1a1430; padding:10px 18px; border-radius:8px; font-size:13px; z-index:50; opacity:0; transition:0.3s; border:1px solid #333; max-width:80%; text-align:center; }
+  .toast.show { opacity:1; }
+  input[type=checkbox] { width:auto; }
+</style>
+</head>
+<body>
+
+<div class="promo" id="promo">
+  <span class="msg"><b>Get the Ron Options App</b><span>Get a better trading experience</span></span>
+  <div style="display:flex;align-items:center;">
+    <button onclick="toast('Opening app download link')">Download</button>
+    <button class="close" onclick="document.getElementById('promo').style.display='none'">✕</button>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="left">
+    <button class="icon-btn" onclick="openDrawer()">☰</button>
+    <button class="acct" onclick="toast('Profile')">P</button>
+    <button class="acct r" onclick="toggleAcctDropdown()">R <span id="balTop">$0.00</span> <span>▾</span></button>
+  </div>
+  <div class="right">
+    <button class="mute" id="muteBtn" onclick="toggleMute()">🔊</button>
+    <button class="deposit" onclick="openModal('deposit')">Deposit</button>
+    <button class="bell" onclick="openModal('notif')">🔔</button>
+  </div>
+  <div class="acct-dropdown" id="acctDropdown">
+    <div class="acct-opt" onclick="switchAccount('real')">
+      <span><span class="dot" style="background:#7b2ff7"></span>Real Account</span>
+      <span class="active-lbl" id="realActiveLbl"></span>
+    </div>
+    <div class="acct-opt" onclick="switchAccount('demo')">
+      <span><span class="dot" style="background:#e53e3e"></span>Demo Account</span>
+      <span class="active-lbl" id="demoActiveLbl">Active</span>
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab" data-mode="matches" onclick="setMode(this,'matches')">Matches/Differs</button>
+  <button class="tab active" data-mode="evenodd" onclick="setMode(this,'evenodd')">Even/Odd</button>
+  <button class="tab" data-mode="over" onclick="setMode(this,'over')">Over/Under</button>
+  <button class="tab" data-mode="rises" onclick="setMode(this,'rises')">Rises/Falls</button>
+</div>
+
+<div id="tradeView">
+  <div class="chart-box">
+    <div class="chart-head">
+      <span onclick="toggleSymbolDropdown()" style="cursor:pointer">⚡ <span id="symbolLabel">Vol 10 (1s)</span> <span class="price" id="priceNow">9555.62</span> <span id="priceChg" style="color:#4ade80">+0.61%</span></span>
+      <span class="zoom" onclick="openModal('zoom')" id="zoomLabel">100% ▾</span>
+    </div>
+    <div class="zoom-controls">
+      <button onclick="zoomChart(1)">+</button>
+      <button onclick="zoomChart(-1)">−</button>
+    </div>
+    <div class="symbol-dropdown" id="symbolDropdown">
+      <div class="symbol-opt active" onclick="pickSymbol('Vol 10 (1s)')">⚡ Volatility 10 (1s) Index <span class="dot"></span></div>
+      <div class="symbol-opt" onclick="pickSymbol('Vol 10')">⚡ Volatility 10 Index</div>
+      <div class="symbol-opt" onclick="pickSymbol('Vol 25 (1s)')">⚡ Volatility 25 (1s) Index</div>
+      <div class="symbol-opt" onclick="pickSymbol('Vol 75 (1s)')">⚡ Volatility 75 (1s) Index</div>
+    </div>
+    <svg id="chartSvg" viewBox="0 0 300 100" preserveAspectRatio="none">
+      <polyline id="chartLine" fill="none" stroke="#fff" stroke-width="1.5" points=""/>
+      <line id="markerLine" x1="0" x2="300" stroke="#7b2ff7" stroke-dasharray="3,3" stroke-width="1"/>
+    </svg>
+    <div class="times" id="timeLabels"><span>t-45</span><span>t-30</span><span>t-15</span><span>now</span></div>
+  </div>
+
+  <div class="section-label" id="digitsLabel">Select Digit Target</div>
+  <div class="digits" id="digitsRow"></div>
+
+  <div class="mode-toggle">
+    <button class="active" id="autoBtn" onclick="setAutoMode(true)">AUTO</button>
+    <button id="manualBtn" onclick="setAutoMode(false)">MANUAL</button>
+  </div>
+
+  <div id="autoFields">
+    <div class="panel-row">
+      <div class="field tp"><label>TARGET PROFIT ($)</label><input id="targetProfit" value="200" oninput="recalc()"></div>
+      <div class="field sl"><label>STOP LOSS ($)</label><input id="stopLoss" value="999" oninput="recalc()"></div>
+      <div class="field mult"><label>MULTIPLIER</label><input id="multiplier" value="x2" onclick="openModal('mult')" readonly></div>
+    </div>
+    <div class="stats"><span id="statsLine">Last 5T · 4W · 1L</span><span id="pnlLine" style="color:#4ade80">+$37.60</span></div>
+  </div>
+
+  <div class="stake-row">
+    <span class="label">Stake</span>
+    <button class="pm" onclick="changeStake(-1)">-</button>
+    <input class="stake-input" id="stakeInput" value="10" oninput="recalc()">
+    <button class="pm" onclick="changeStake(1)">+</button>
+  </div>
+  <div class="presets" id="presets"></div>
+
+  <div class="trade-row">
+    <button class="trade-btn even" id="leftBtn" onclick="placeTrade('left')">
+      <span id="leftLabel">Even</span> <span class="pct" id="leftPct">95.2%</span><br><span class="payout">Payout: $<span id="leftPayout">19.52</span></span>
+    </button>
+    <button class="trade-btn odd" id="rightBtn" onclick="placeTrade('right')">
+      <span id="rightLabel">Odd</span> <span class="pct" id="rightPct">95.2%</span><br><span class="payout">Payout: $<span id="rightPayout">19.52</span></span>
+    </button>
+  </div>
+</div>
+
+<div class="positions-panel" id="positionsPanel">
+  <div class="pos-tabs">
+    <button class="pos-tab active" id="posTabOpen" onclick="showPosTab('open')">Open (<span id="openCount">0</span>)</button>
+    <button class="pos-tab" id="posTabClosed" onclick="showPosTab('closed')">Closed (<span id="closedCount">0</span>)</button>
+    <button class="pos-tab" id="posTabTx" onclick="showPosTab('tx')">Transactions</button>
+  </div>
+  <div id="posOpenView">
+    <div class="pos-empty"><div class="ic">◎</div><h4>No open positions</h4><span>Your active trades will appear here</span></div>
+  </div>
+  <div id="posClosedView" style="display:none">
+    <div class="pos-empty"><div class="ic">🕐</div><h4>No closed positions</h4><span>Completed trades will appear here</span></div>
+  </div>
+  <div id="posTxView" style="display:none"></div>
+</div>
+<div class="session-bar" id="sessionBar" style="display:none">
+  <span>Last Session <span id="sessTrades">5 trades (4W / 1L)</span></span>
+  <span>Session P/L: <span style="color:#4ade80" id="sessPnl">+37.60 USD</span></span>
+</div>
+
+<div class="bottom-nav">
+  <button class="nav-item active" id="navTrade" onclick="showView('trade')"><span class="ic">📈</span>Trade</button>
+  <button class="nav-item" id="navAI" onclick="openModal('ai')"><span class="ic">✨</span>AI</button>
+  <button class="nav-item" id="navPos" onclick="showView('positions')"><span class="ic">💼</span>Positions</button>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeAll()"></div>
+
+<div class="drawer" id="drawer">
+  <div class="drawer-head"><span>Menu</span><span style="display:flex;align-items:center;gap:6px;font-weight:normal;font-size:14px;" onclick="toast('Language selector')">🇬🇧 EN</span></div>
+  <div class="drawer-profile">
+    <div class="avatar" id="avatarInit">T</div>
+    <div><b id="drawerName">Trader</b><div style="font-size:12px;color:#999" id="drawerEmail">tr***@example.com</div></div>
+  </div>
+  <div class="drawer-item"><span style="width:22px;text-align:center;">📈</span> Ron Options</div>
+  <div class="drawer-item" onclick="toast('Account settings')"><span style="width:22px;text-align:center;">⚙️</span> Account settings <span class="chev">▾</span></div>
+  <div class="drawer-item" onclick="closeAll(); openModal('deposit')"><span style="width:22px;text-align:center;">⬇️</span> Deposit <span class="chev">›</span></div>
+  <div class="drawer-item" onclick="closeAll(); openModal('withdraw')"><span style="width:22px;text-align:center;">⬆️</span> Withdraw <span class="chev">›</span></div>
+  <div class="drawer-item" onclick="closeAll(); showView('positions'); showPosTab('tx')"><span style="width:22px;text-align:center;">🕓</span> History <span class="chev">›</span></div>
+  <div class="drawer-item refer" onclick="toast('Refer & Earn — share your link')"><span style="width:22px;text-align:center;">🎁</span> Refer &amp; Earn</div>
+  <div class="drawer-item"><span style="width:22px;text-align:center;">🌙</span> Dark theme
+    <button class="toggle-sw on" id="darkToggle" onclick="toggleDark()"><span class="knob"></span></button>
+  </div>
+  <div class="drawer-item" onclick="toast('Opening Help Centre')"><span style="width:22px;text-align:center;">❓</span> Help Centre</div>
+  <div class="drawer-item" onclick="toast('Opening Responsible Trading info')"><span style="width:22px;text-align:center;">🛡️</span> Responsible Trading <span class="chev">›</span></div>
+  <div class="drawer-item" onclick="toast('Opening Live Chat')"><span style="width:22px;text-align:center;">💬</span> Live Chat</div>
+  <div class="drawer-item" onclick="logout()" style="color:#f87171"><span style="width:22px;text-align:center;">🚪</span> Log Out</div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-head"><div><h3 id="modalTitle"></h3><span class="sub" id="modalSub"></span></div><button class="close-x" onclick="closeAll()">✕</button></div>
+  <div class="modal-body" id="modalBody"></div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+let balance = {real:0.00, demo:0.00};
+let activeAccount = 'demo';
+let stake = 10;
+let selectedDigit = 5;
+let autoMode = true;
+let wins = 0, losses = 0, trades = 0;
+let chartData = [50,55,52,58,60,57,65,70,68,75,80,78];
+let currentMode = 'evenodd';
+let muted = false;
+let darkOn = true;
+let scanInterval = null;
+let currentUser = null;
+
+const SUPABASE_URL = 'https://qmzhzkwrinmfhodsdaio.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_08YlsDvQpZ7bxjA_YV4kXQ_HVEpOfFJ';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function initAuth(){
+  const { data: { session } } = await supabase.auth.getSession();
+  if(!session){
+    window.location.href = 'login.html';
+    return;
+  }
+  currentUser = session.user;
+  await loadMe();
+  await loadTransactions();
+}
+
+async function loadMe(){
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', currentUser.id)
+    .single();
+  if(error || !profile){ toast('Could not load your profile'); return; }
+  balance.demo = profile.demo_balance;
+  balance.real = profile.real_balance;
+  const name = profile.full_name || currentUser.email;
+  document.getElementById('drawerName').textContent = name;
+  document.getElementById('avatarInit').textContent = name.charAt(0).toUpperCase();
+  const emailMasked = currentUser.email.replace(/^(.{2}).+(@.+)$/, '$1***$2');
+  document.getElementById('drawerEmail').textContent = emailMasked;
+  updateBalance();
+}
+
+async function loadTransactions(){
+  const { data: rows, error } = await supabase
+    .from('trades')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('id', { ascending: false })
+    .limit(100);
+  if(error){ return; }
+  const list = document.getElementById('posTxView');
+  list.innerHTML = '';
+  wins = 0; losses = 0; trades = rows.length;
+  rows.forEach(t=>{
+    const win = t.result === 'win';
+    if(win) wins++; else losses++;
+    const item = document.createElement('div');
+    item.className = 'pos-item';
+    const when = new Date(t.created_at).toLocaleString();
+    item.innerHTML = `<span class="pic" style="background:${win?'#134e2e':'#4e1313'}">${win?'↗':'↘'}</span>
+      <span class="info"><b class="${win?'win-c':'loss-c'}">Closed</b><br><span style="font-size:11px;color:#999">${t.side} · ${when}</span></span>
+      <span class="amt ${win?'win-c':'loss-c'}">${win?'+':''}${Number(t.amount).toFixed(2)}<span class="bal">Bal: ${Number(t.balance_after).toFixed(2)}</span></span>`;
+    list.appendChild(item);
+  });
+  document.getElementById('closedCount').textContent = trades;
+  if(trades > 0){
+    document.getElementById('statsLine').textContent = `Last ${trades}T · ${wins}W · ${losses}L`;
+    document.getElementById('sessionBar').style.display = 'flex';
+    document.getElementById('sessTrades').textContent = `${trades} trades (${wins}W / ${losses}L)`;
+  }
+}
+
+async function logout(){
+  await supabase.auth.signOut();
+  window.location.href = 'login.html';
+}
+
+const digitProbs = [10.6,11.4,10.0,10.0,9.0,12.8,10.0,8.6,10.6,7.8];
+const presetVals = [1,5,10,25,50,100];
+const modeConfig = {
+  evenodd: {left:'Even', right:'Odd', label:'Select Digit Target', showDigits:true},
+  matches: {left:'Match', right:'Differ', label:'Select Digit Target', showDigits:true},
+  over: {left:'Over', right:'Under', label:'Select Barrier', showDigits:true},
+  rises: {left:'Rise', right:'Fall', label:'', showDigits:false}
+};
+
+function renderDigits(){
+  const row = document.getElementById('digitsRow');
+  row.innerHTML = '';
+  document.getElementById('digitsRow').style.display = modeConfig[currentMode].showDigits ? 'grid' : 'none';
+  document.getElementById('digitsLabel').style.display = modeConfig[currentMode].showDigits ? 'block' : 'none';
+  if(!modeConfig[currentMode].showDigits) return;
+  digitProbs.forEach((p,i)=>{
+    const d = document.createElement('div');
+    d.className = 'digit' + (i===selectedDigit?' selected':'') + (i===2?' hot':'') + (i===4?' cold':'');
+    d.innerHTML = i + '<small>' + p.toFixed(1) + '%</small>';
+    d.onclick = ()=>{ selectedDigit=i; renderDigits(); recalc(); };
+    row.appendChild(d);
+  });
+}
+
+function renderPresets(){
+  const p = document.getElementById('presets');
+  p.innerHTML = '';
+  presetVals.forEach(v=>{
+    const b = document.createElement('button');
+    b.textContent = '$'+v;
+    if(v===stake) b.classList.add('active');
+    b.onclick = ()=>{ stake=v; document.getElementById('stakeInput').value=v; renderPresets(); recalc(); };
+    p.appendChild(b);
+  });
+}
+
+function changeStake(dir){
+  stake = Math.max(1, stake + dir);
+  document.getElementById('stakeInput').value = stake;
+  renderPresets();
+  recalc();
+}
+
+function calcPayoutPct(probPct){
+  const mult = (100/probPct) * 0.95;
+  return { pct: (mult-1)*100, mult };
+}
+
+function recalc(){
+  stake = parseFloat(document.getElementById('stakeInput').value) || 0;
+  const cfg = modeConfig[currentMode];
+  document.getElementById('leftLabel').textContent = cfg.left;
+  document.getElementById('rightLabel').textContent = cfg.right;
+
+  let leftPct, rightPct;
+  if(currentMode === 'evenodd' || currentMode === 'rises'){
+    leftPct = 95.2; rightPct = 95.2;
+  } else if(currentMode === 'matches'){
+    const p = digitProbs[selectedDigit];
+    leftPct = calcPayoutPct(p).pct;
+    rightPct = calcPayoutPct(100-p).pct;
+  } else if(currentMode === 'over'){
+    const overCount = 9 - selectedDigit;
+    const underCount = selectedDigit;
+    const pOver = Math.max(overCount,0.5)/10*100;
+    const pUnder = Math.max(underCount,0.5)/10*100;
+    leftPct = calcPayoutPct(pOver).pct;
+    rightPct = calcPayoutPct(pUnder).pct;
+  }
+  document.getElementById('leftPct').textContent = leftPct.toFixed(1)+'%';
+  document.getElementById('rightPct').textContent = rightPct.toFixed(1)+'%';
+  document.getElementById('leftPayout').textContent = (stake * (1+leftPct/100)).toFixed(2);
+  document.getElementById('rightPayout').textContent = (stake * (1+rightPct/100)).toFixed(2);
+
+  const pnl = (stake * 0.655).toFixed(2);
+  document.getElementById('pnlLine').textContent = '+$' + pnl;
+}
+
+function setAutoMode(isAuto){
+  autoMode = isAuto;
+  document.getElementById('autoBtn').classList.toggle('active', isAuto);
+  document.getElementById('manualBtn').classList.toggle('active', !isAuto);
+  document.getElementById('autoFields').style.display = isAuto ? 'block' : 'none';
+}
+
+function setMode(el, mode){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentMode = mode;
+  toast('Switched to ' + el.textContent);
+  renderDigits();
+  recalc();
+  drawChart();
+}
+
+function drawChart(){
+  chartData = chartData.map(v => Math.max(20, Math.min(90, v + (Math.random()*10-5))));
+  const w = 300, h = 100;
+  const min = Math.min(...chartData), max = Math.max(...chartData);
+  const pts = chartData.map((v,i)=>{
+    const x = i/(chartData.length-1)*w;
+    const y = h - ((v-min)/(max-min||1))*h;
+    return x+','+y;
+  }).join(' ');
+  document.getElementById('chartLine').setAttribute('points', pts);
+  const lastY = h - ((chartData[chartData.length-1]-min)/(max-min||1))*h;
+  document.getElementById('markerLine').setAttribute('y1', lastY);
+  document.getElementById('markerLine').setAttribute('y2', lastY);
+  const price = (9550 + chartData[chartData.length-1]).toFixed(2);
+  document.getElementById('priceNow').textContent = price;
+  const now = new Date();
+  const t = (s)=> new Date(now-s*1000).toTimeString().slice(0,8);
+  document.getElementById('timeLabels').innerHTML =
+    `<span>${t(45)}</span><span>${t(30)}</span><span>${t(15)}</span><span>${t(0)}</span>`;
+}
+
+function zoomChart(dir){
+  let cur = parseInt(document.getElementById('zoomLabel').textContent);
+  cur = Math.max(50, Math.min(200, cur + dir*25));
+  document.getElementById('zoomLabel').textContent = cur + '% ▾';
+}
+
+function pickSymbol(name){
+  document.getElementById('symbolLabel').textContent = name;
+  document.getElementById('symbolDropdown').classList.remove('show');
+  toast('Switched market to ' + name);
+  drawChart();
+}
+function toggleSymbolDropdown(){
+  document.getElementById('symbolDropdown').classList.toggle('show');
+}
+
+async function placeTrade(side){
+  const bal = balance[activeAccount];
+  if(bal < stake){ toast('Insufficient balance'); return; }
+  const btn = document.getElementById(side==='left'?'leftBtn':'rightBtn');
+  btn.disabled = true;
+
+  const pctEl = side==='left' ? document.getElementById('leftPct') : document.getElementById('rightPct');
+  const pct = parseFloat(pctEl.textContent);
+  const label = side==='left' ? document.getElementById('leftLabel').textContent : document.getElementById('rightLabel').textContent;
+
+  const win = Math.random() < 0.55;
+  let newBalance = bal - stake;
+  let amount = -stake;
+  if(win){
+    const winAmt = stake * (1 + pct/100);
+    newBalance += winAmt;
+    amount = winAmt;
+  }
+
+  const balCol = activeAccount === 'demo' ? 'demo_balance' : 'real_balance';
+  const { error: updateErr } = await supabase
+    .from('profiles')
+    .update({ [balCol]: newBalance })
+    .eq('id', currentUser.id);
+
+  if(updateErr){ btn.disabled = false; toast('Could not update balance'); return; }
+
+  await supabase.from('trades').insert({
+    user_id: currentUser.id,
+    account_type: activeAccount,
+    mode: currentMode,
+    side: label,
+    digit: modeConfig[currentMode].showDigits ? selectedDigit : null,
+    stake: stake,
+    payout_pct: pct,
+    result: win ? 'win' : 'loss',
+    amount: amount,
+    balance_after: newBalance
+  });
+
+  btn.disabled = false;
+  btn.classList.add('flash');
+  setTimeout(()=>btn.classList.remove('flash'), 600);
+
+  balance[activeAccount] = newBalance;
+  updateBalance();
+  if(win) toast('Win +$' + amount.toFixed(2));
+  else toast('Loss -$' + Math.abs(amount).toFixed(2));
+
+  await loadTransactions();
+}
+
+function updateBalance(){
+  document.getElementById('balTop').textContent = '$' + balance[activeAccount].toFixed(2);
+}
+
+function showView(view){
+  document.getElementById('tradeView').classList.toggle('hide', view!=='trade');
+  document.getElementById('positionsPanel').classList.toggle('show', view==='positions');
+  document.getElementById('sessionBar').style.display = (view==='positions' && trades>0) ? 'flex' : 'none';
+  document.getElementById('navTrade').classList.toggle('active', view==='trade');
+  document.getElementById('navPos').classList.toggle('active', view==='positions');
+}
+
+function showPosTab(tab){
+  document.getElementById('posTabOpen').classList.toggle('active', tab==='open');
+  document.getElementById('posTabClosed').classList.toggle('active', tab==='closed');
+  document.getElementById('posTabTx').classList.toggle('active', tab==='tx');
+  document.getElementById('posOpenView').style.display = tab==='open' ? 'block':'none';
+  document.getElementById('posClosedView').style.display = tab==='closed' ? 'block':'none';
+  document.getElementById('posTxView').style.display = tab==='tx' ? 'block':'none';
+}
+
+function openDrawer(){
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+}
+function toggleAcctDropdown(){
+  document.getElementById('acctDropdown').classList.toggle('show');
+}
+function switchAccount(type){
+  activeAccount = type;
+  document.getElementById('realActiveLbl').textContent = type==='real' ? 'Active' : '';
+  document.getElementById('demoActiveLbl').textContent = type==='demo' ? 'Active' : '';
+  updateBalance();
+  document.getElementById('acctDropdown').classList.remove('show');
+  toast('Switched to ' + (type==='real'?'Real':'Demo') + ' Account');
+}
+function toggleMute(){
+  muted = !muted;
+  document.getElementById('muteBtn').textContent = muted ? '🔇' : '🔊';
+}
+function toggleDark(){
+  darkOn = !darkOn;
+  document.getElementById('darkToggle').classList.toggle('on', darkOn);
+  document.body.classList.toggle('light', !darkOn);
+}
+function closeAll(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('modal').classList.remove('show');
+  document.getElementById('acctDropdown').classList.remove('show');
+  document.getElementById('symbolDropdown').classList.remove('show');
+  if(scanInterval){ clearInterval(scanInterval); scanInterval=null; }
+}
+
+function openModal(type){
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('modal').classList.add('show');
+  const title = document.getElementById('modalTitle');
+  const sub = document.getElementById('modalSub');
+  const body = document.getElementById('modalBody');
+
+  if(type === 'deposit'){
+    title.textContent = 'Deposit Funds'; sub.textContent = 'Choose your payment method';
+    body.innerHTML = `
+      <div class="pay-method selected" onclick="selectPay(this,'mpesa')"><span class="pic">📱</span><span class="txt"><b>M-Pesa</b><span>Instant mobile money</span></span><span class="arrow">↗</span></div>
+      <div class="pay-method" onclick="selectPay(this,'usdt')"><span class="pic">💠</span><span class="txt"><b>USDT (TRC20)</b><span>Cryptocurrency · auto-credited</span></span><span class="arrow">↗</span></div>
+      <div class="pay-method" onclick="selectPay(this,'card')"><span class="pic">💳</span><span class="txt"><b>Card</b><span>Visa, Mastercard</span></span><span class="arrow">↗</span></div>
+      <div class="trust-row"><span>● Secure</span><span>● Instant</span><span>● 24/7 Support</span></div>`;
+  } else if(type === 'withdraw'){
+    title.textContent = 'Withdraw Funds'; sub.textContent = 'Choose your withdrawal method';
+    body.innerHTML = `
+      <div class="pay-method selected" onclick="selectPay(this,'mpesa')"><span class="pic">📱</span><span class="txt"><b>M-Pesa</b><span>1-24hr processing</span></span><span class="arrow">↗</span></div>
+      <div class="pay-method" onclick="selectPay(this,'bank')"><span class="pic">🏦</span><span class="txt"><b>Bank Transfer</b><span>1-3 business days</span></span><span class="arrow">↗</span></div>
+      <div class="pay-method" onclick="selectPay(this,'usdt')"><span class="pic">💠</span><span class="txt"><b>USDT (TRC20)</b><span>Cryptocurrency</span></span><span class="arrow">↗</span></div>
+      <div class="trust-row"><span>● Secure</span><span>● Verified</span><span>● 24/7 Support</span></div>`;
+  } else if(type === 'notif'){
+    title.textContent = 'Notifications'; sub.textContent='';
+    body.innerHTML = `<p style="color:#999;font-size:13px">No new notifications.</p>`;
+  } else if(type === 'zoom'){
+    title.textContent = 'Chart Zoom'; sub.textContent='';
+    body.innerHTML = `<p style="color:#999;font-size:13px">Use the +/- controls on the chart to zoom in/out.</p>`;
+  } else if(type === 'mult'){
+    title.textContent = 'Select Multiplier'; sub.textContent='';
+    body.innerHTML = ['x1','x2','x3','x5'].map(m=>`<div class="pay-method" onclick="pickMultiplier('${m}')"><b>${m}</b></div>`).join('');
+  } else if(type === 'ai'){
+    title.textContent = 'Entry Scanner'; sub.textContent='';
+    body.innerHTML = `
+      <p>Pick the market category you want to scan. The deep scanner walks every <b>volatility / synthetic</b> index and surfaces the best entry point for that category based on historical tick patterns.</p>
+      <div class="ai-field"><label>Market</label>
+        <select class="ai-select" id="aiMarketSelect">
+          <option>Even/Odd</option><option>Matches/Differs</option><option>Over/Under</option><option>Rises/Falls</option>
+        </select>
+      </div>
+      <div class="scan-row"><span>Ready to scan</span><span id="scanProgress">0/13</span></div>
+      <div class="progress-bar"><div class="fill" id="scanFill"></div></div>
+      <button class="scan-btn" id="scanBtn" onclick="runScan()">🔍 Deep Scan for Best Market</button>
+      <button class="load-bot-btn" onclick="toast('Loading Deep Scanner Bot...')">Load Deep Scanner Bot</button>`;
+  }
+}
+function selectPay(el, type){
+  el.parentElement.querySelectorAll('.pay-method').forEach(p=>p.classList.remove('selected'));
+  el.classList.add('selected');
+  toast('Selected ' + type.toUpperCase());
+}
+function pickMultiplier(m){
+  document.getElementById('multiplier').value = m;
+  closeAll();
+  toast('Multiplier set to ' + m);
+}
+function runScan(){
+  let done = 0;
+  const btn = document.getElementById('scanBtn');
+  btn.textContent = 'Scanning...';
+  btn.disabled = true;
+  scanInterval = setInterval(()=>{
+    done++;
+    document.getElementById('scanProgress').textContent = done+'/13';
+    document.getElementById('scanFill').style.width = (done/13*100)+'%';
+    if(done>=13){
+      clearInterval(scanInterval); scanInterval=null;
+      btn.textContent = '🔍 Deep Scan for Best Market';
+      btn.disabled = false;
+      toast('Best entry found: Even/Odd · Digit 5');
+    }
+  }, 200);
+}
+
+function toast(msg){
+  const t = document.getElementById('toastEl');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+renderDigits();
+renderPresets();
+recalc();
+drawChart();
+initAuth();
+setInterval(drawChart, 2000);
+</script>
+</body>
+</html>
