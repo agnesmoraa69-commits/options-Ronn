@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ron Options - Create Account</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; font-family:-apple-system,Roboto,Arial,sans-serif; }
+  body { background:linear-gradient(180deg,#0d0a1a,#1a1140); color:#fff; min-height:100vh; padding:24px 20px; }
+  .brand { display:flex; align-items:center; gap:8px; font-weight:bold; font-size:18px; margin-bottom:24px; }
+  .brand .logo { background:linear-gradient(135deg,#e91e8c,#7b2ff7); width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; }
+  h1 { font-size:24px; margin-bottom:6px; }
+  .sub { color:#999; font-size:14px; margin-bottom:24px; }
+  label { font-size:13px; color:#ccc; display:block; margin-bottom:6px; }
+  .field-wrap { position:relative; margin-bottom:16px; }
+  input { width:100%; padding:14px 14px 14px 40px; border-radius:8px; border:none; background:#fff; color:#111; font-size:14px; }
+  .field-wrap .ic { position:absolute; left:12px; top:14px; color:#888; }
+  .terms { display:flex; align-items:flex-start; gap:8px; font-size:13px; color:#ccc; margin-bottom:20px; }
+  .terms a { color:#a855f7; text-decoration:none; }
+  .create-btn { width:100%; background:#7b2ff7; border:none; color:#fff; padding:14px; border-radius:10px; font-weight:bold; font-size:15px; }
+  .create-btn:disabled { opacity:0.6; }
+  .footer-link { text-align:center; margin-top:20px; font-size:14px; color:#ccc; }
+  .footer-link a { color:#a855f7; text-decoration:none; }
+  .msg { font-size:13px; margin-bottom:12px; display:none; padding:10px; border-radius:8px; }
+  .msg.error { color:#f87171; background:rgba(248,113,113,0.1); display:block; }
+  .msg.success { color:#4ade80; background:rgba(74,222,128,0.1); display:block; }
+</style>
+</head>
+<body>
+
+<div class="brand"><span class="logo">📈</span> Ron Options</div>
+<h1>Create account</h1>
+<div class="sub">Fill in your details to get started</div>
+
+<div class="msg" id="msgBox"></div>
+
+<label>Full Name</label>
+<div class="field-wrap"><span class="ic">👤</span><input id="name" placeholder="John Doe"></div>
+
+<label>Email</label>
+<div class="field-wrap"><span class="ic">✉</span><input type="email" id="email" placeholder="you@example.com"></div>
+
+<label>Password</label>
+<div class="field-wrap"><span class="ic">🔒</span><input type="password" id="password" placeholder="Min 6 characters"></div>
+
+<label>Confirm Password</label>
+<div class="field-wrap"><span class="ic">🔒</span><input type="password" id="confirm" placeholder="Repeat your password"></div>
+
+<div class="terms">
+  <input type="checkbox" id="agree" style="width:auto;margin-top:3px;">
+  <label style="margin:0;font-weight:normal;">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></label>
+</div>
+
+<button class="create-btn" id="createBtn" onclick="createAccount()">Create Account →</button>
+
+<div class="footer-link">Already have an account? <a href="login.html">Sign in</a></div>
+
+<script>
+  const SUPABASE_URL = 'https://qmzhzkwrinmfhodsdaio.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_08YlsDvQpZ7bxjA_YV4kXQ_HVEpOfFJ';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  async function createAccount(){
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const pw = document.getElementById('password').value;
+    const confirm = document.getElementById('confirm').value;
+    const agree = document.getElementById('agree').checked;
+    const msg = document.getElementById('msgBox');
+    msg.className = 'msg';
+
+    if(!name || !email || !pw || !confirm){
+      msg.textContent = 'Please fill in all fields.'; msg.className = 'msg error'; return;
+    }
+    if(pw.length < 6){
+      msg.textContent = 'Password must be at least 6 characters.'; msg.className = 'msg error'; return;
+    }
+    if(pw !== confirm){
+      msg.textContent = 'Passwords do not match.'; msg.className = 'msg error'; return;
+    }
+    if(!agree){
+      msg.textContent = 'You must agree to the Terms and Privacy Policy.'; msg.className = 'msg error'; return;
+    }
+
+    const btn = document.getElementById('createBtn');
+    btn.textContent = 'Creating account...';
+    btn.disabled = true;
+
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: pw,
+      options: { data: { full_name: name } }
+    });
+
+    if(error){
+      msg.textContent = error.message; msg.className = 'msg error';
+      btn.textContent = 'Create Account →'; btn.disabled = false;
+      return;
+    }
+
+    msg.textContent = 'Account created! Redirecting...'; msg.className = 'msg success';
+    setTimeout(()=>{ window.location.href = 'trade.html'; }, 1200);
+  }
+</script>
+</body>
+</html>
