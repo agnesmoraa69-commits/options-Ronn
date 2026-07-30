@@ -64,6 +64,22 @@
   const SUPABASE_KEY = 'sb_publishable_08YlsDvQpZ7bxjA_YV4kXQ_HVEpOfFJ';
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+  // Catch the password reset token when coming back from the email link
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      const newPassword = prompt("Enter your new password:");
+      if (newPassword) {
+        const { error } = await sb.auth.updateUser({ password: newPassword });
+        if (error) {
+          alert("Could not update password: " + error.message);
+        } else {
+          alert("Password updated successfully!");
+          window.location.href = 'trade.html';
+        }
+      }
+    }
+  });
+
   function togglePw(){
     const p = document.getElementById('password');
     p.type = p.type === 'password' ? 'text' : 'password';
