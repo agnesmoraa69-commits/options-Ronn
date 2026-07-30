@@ -585,7 +585,7 @@ function toggleSymbolDropdown(){
   document.getElementById('symbolDropdown').classList.toggle('show');
 }
 
-// EXECUTE TRADE CONTRACT WITH LOCK
+// EXECUTE TRADE CONTRACT WITH RPC & DATABASE LOCK
 async function placeTrade(side){
   if (isExecutingTrade) return;
   const bal = balance[activeAccount];
@@ -597,11 +597,8 @@ async function placeTrade(side){
   btn.classList.add('flash');
   setTimeout(()=>btn.classList.remove('flash'), 600);
 
-  const pctEl = side==='left' ? document.getElementById('leftPct') : document.getElementById('rightPct');
-  const pct = parseFloat(pctEl.textContent);
   const label = side==='left' ? document.getElementById('leftLabel').textContent : document.getElementById('rightLabel').textContent;
 
-  // Deduct stake upfront
   balance[activeAccount] -= stake;
   updateBalance();
 
@@ -610,14 +607,13 @@ async function placeTrade(side){
     id: tradeId,
     side: label,
     stake: stake,
-    pct: pct,
+    pct: parseFloat(side==='left' ? document.getElementById('leftPct').textContent : document.getElementById('rightPct').textContent),
     ticksLeft: 3
   };
 
   openTrades.push(openItem);
   renderOpenTrades();
 
-  // Tick countdown timer
   const interval = setInterval(async () => {
     openItem.ticksLeft--;
     renderOpenTrades();
@@ -627,56 +623,40 @@ async function placeTrade(side){
       openTrades = openTrades.filter(t => t.id !== tradeId);
       renderOpenTrades();
 
-      // Resolve Contract Result
-      const lastDigit = parseInt(document.getElementById('priceNow').textContent.slice(-1));
-      let win = false;
+      // Query Supabase for authoritative trade outcome
+      const { data, error } = await sb.rpc('execute_trade', {
+        p_account_type: activeAccount,
+        p_mode: currentMode,
+        p_side: label,
+        p_target_digit: selectedDigit,
+        p_stake: stake
+      });
 
-      if(currentMode === 'evenodd'){
-        win = (label === 'Even' && lastDigit % 2 === 0) || (label === 'Odd' && lastDigit % 2 !== 0);
-      } else if(currentMode === 'matches'){
-        win = (label === 'Match' && lastDigit === selectedDigit) || (label === 'Differ' && lastDigit !== selectedDigit);
-      } else if(currentMode === 'over'){
-        win = (label === 'Over' && lastDigit > selectedDigit) || (label === 'Under' && lastDigit < selectedDigit);
-      } else {
-        win = Math.random() < 0.52;
+      if(error || !data){
+        toast('Trade execution error');
+        balance[activeAccount] += stake;
+        updateBalance();
+        isExecutingTrade = false;
+        return;
       }
 
-      let newBalance = balance[activeAccount];
-      let amount = -stake;
+      const win = data.win;
+      const netAmt = data.net_amount;
+      const newBal = data.new_balance;
+
+      balance[activeAccount] = newBal;
+      updateBalance();
 
       if(win){
-        const winAmt = stake * (1 + pct/100);
-        newBalance += winAmt;
-        amount = winAmt - stake;
         playSound('win');
-        toast('Win +$' + winAmt.toFixed(2));
+        toast('Win +$' + (stake + netAmt).toFixed(2));
       } else {
         playSound('loss');
         toast('Loss -$' + stake.toFixed(2));
       }
 
-      balance[activeAccount] = newBalance;
-      updateBalance();
-
-      // Sync with Supabase
-      const balCol = activeAccount === 'demo' ? 'demo_balance' : 'real_balance';
-      await sb.from('profiles').update({ [balCol]: newBalance }).eq('id', currentUser.id);
-
-      await sb.from('trades').insert({
-        user_id: currentUser.id,
-        account_type: activeAccount,
-        mode: currentMode,
-        side: label,
-        digit: modeConfig[currentMode].showDigits ? selectedDigit : null,
-        stake: stake,
-        payout_pct: pct,
-        result: win ? 'win' : 'loss',
-        amount: amount,
-        balance_after: newBalance
-      });
-
       await loadTransactions();
-      isExecutingTrade = false; // Release Lock
+      isExecutingTrade = false;
     }
   }, 1000);
 }
