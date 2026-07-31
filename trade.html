@@ -894,18 +894,26 @@ function openModal(type){
   } else if(type === 'ai'){
     document.getElementById('navAI').classList.add('active');
     title.textContent = 'Entry Scanner'; sub.textContent='';
-  body.innerHTML = `
-    <p style="font-size:13px; color:#aaa; margin-bottom:14px; line-height:1.4;">Pick the market category you want to scan. The deep scanner walks every <b>volatility / synthetic</b> index and surfaces the best entry point for that category based on historical tick patterns.</p>
-    <div class="ai-field" style="margin-bottom:12px;"><label style="font-size:12px; color:#888; display:block; margin-bottom:4px;">Market</label>
+body.innerHTML = `
+    <p style="font-size:13px; color:#aaa; margin-bottom:14px; line-height:1.4;">
+      Pick the market category you want to scan. The deep scanner walks every <b>volatility / synthetic</b> index and surfaces the best entry point for that category based on historical tick patterns.
+    </p>
+    <div class="ai-field" style="margin-bottom:12px;">
+      <label style="font-size:12px; color:#888; display:block; margin-bottom:4px;">Market</label>
       <select class="ai-select" id="aiMarketSelect" style="width:100%; background:#1a1430; border:1px solid #2a2050; color:#fff; padding:10px; border-radius:8px;">
-        <option>Even / Odd</option><option>Matches / Differs</option><option>Over / Under</option><option>Rises / Falls</option>
+        <option>Even / Odd</option>
+        <option>Matches / Differs</option>
+        <option>Over / Under</option>
+        <option>Rises / Falls</option>
       </select>
     </div>
     <div class="scan-row" style="display:flex; justify-content:space-between; font-size:12px; color:#aaa; margin-bottom:6px;">
       <span id="scanStatusText">Ready to scan</span>
       <span id="scanProgress">0/13</span>
     </div>
-    <div class="progress-bar" style="height:6px; background:#1a1430; border-radius:4px; overflow:hidden; margin-bottom:14px;"><div class="fill" id="scanFill" style="width:0%; height:100%; background:#7b2ff7; transition:width 0.15s;"></div></div>
+    <div class="progress-bar" style="height:6px; background:#1a1430; border-radius:4px; overflow:hidden; margin-bottom:14px;">
+      <div class="fill" id="scanFill" style="width:0%; height:100%; background:#7b2ff7; transition:width 0.15s;"></div>
+    </div>
     <div id="scanResultCards" style="display:none; flex-direction:column; gap:8px; margin-bottom:12px;">
       <div style="background:#1a1430; border:1px solid #2a2050; padding:10px 12px; border-radius:8px;">
         <div style="font-size:11px; color:#888;">Selected Market</div>
@@ -924,8 +932,31 @@ function openModal(type){
         <div style="margin-top:4px; font-weight:bold;">Quality <span id="resQuality">91.57%</span></div>
       </div>
     </div>
-    <button class="scan-btn" id="scanBtn" onclick="runScan()" style="width:100%; background:#7b2ff7; border:none; color:#fff; padding:12px; border-radius:8px; font-weight:bold; margin-bottom:8px; cursor:pointer;">⚡ Deep Scan for Best Market</button>
-    <button class="load-bot-btn" id="loadBotBtn" onclick="loadScannerBot()" style="width:100%; background:#241d45; border:none; color:#855ff7; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">Load Deep Scanner Bot</button>
+
+    <!-- LIVE TERMINAL CONSOLE -->
+    <div id="terminalConsole" style="background:#0c0914; border:1px solid #2a2050; border-radius:8px; padding:10px; font-family:monospace; font-size:11px; color:#4ade80; height:80px; overflow-y:auto; margin-bottom:12px; display:flex; flex-direction:column; gap:4px;">
+      <div style="color:#666;">[SYSTEM] Terminal console online. Ready for command...</div>
+    </div>
+
+    <!-- LIVE BOT DASHBOARD -->
+    <div id="liveBotDashboard" style="display:none; background:rgba(34,197,94,0.08); border:1px solid #22c55e; border-radius:8px; padding:12px; margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="color:#22c55e; font-weight:bold; font-size:13px;">● BOT RUNNING & TRADING</span>
+        <button id="stopBotBtn" onclick="stopScannerBot()" style="background:#ef4444; border:none; color:#fff; font-size:10px; font-weight:bold; padding:4px 8px; border-radius:4px; cursor:pointer;">STOP BOT</button>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; color:#ccc; font-size:11px; margin-bottom:6px;">
+        <div><b>Session Profit:</b> <span id="liveProfit" style="color:#4ade80; font-weight:bold;">+$0.00</span></div>
+        <div><b>Trades:</b> <span id="liveTrades">0 W / 0 L</span></div>
+      </div>
+      <div style="font-size:11px; color:#aaa;"><b>Active Signal:</b> <span id="liveSignalText" style="color:#fff;">Waiting for tick pattern...</span></div>
+    </div>
+
+    <button class="scan-btn" id="scanBtn" onclick="runScan()" style="width:100%; background:#7b2ff7; border:none; color:#fff; padding:12px; border-radius:8px; font-weight:bold; margin-bottom:8px; cursor:pointer;">
+      ⚡ Deep Scan for Best Market
+    </button>
+    <button class="load-bot-btn" id="loadBotBtn" onclick="loadScannerBot()" style="width:100%; background:#241d45; border:none; color:#855ff7; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">
+      Load Deep Scanner Bot
+    </button>
   `;
   }
 }
