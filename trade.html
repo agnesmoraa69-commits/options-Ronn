@@ -537,7 +537,115 @@ const modeConfig = {
   rises: {left:'Rise', right:'Fall', label:'', showDigits:false}
 };
 
-function renderDigits(){
+function renderProChart(canvasId, priceHistory) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  const width = canvas.width = canvas.parentElement.clientWidth;
+  const height = canvas.height = 240;
+
+  ctx.clearRect(0, 0, width, height);
+
+  // 1. Dark Background Gradient
+  const bgGrad = ctx.createRadialGradient(width / 2, height / 2, 10, width / 2, height / 2, width);
+  bgGrad.addColorStop(0, '#151328');
+  bgGrad.addColorStop(1, '#0b0914');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, width, height);
+
+  if (!priceHistory || priceHistory.length < 2) return;
+
+  const minPrice = Math.min(...priceHistory);
+  const maxPrice = Math.max(...priceHistory);
+  const paddingRight = 65;
+  const paddingTop = 30;
+  const paddingBottom = 30;
+
+  const getX = (index) => (index / (priceHistory.length - 1)) * (width - paddingRight);
+  const getY = (price) => height - paddingBottom - ((price - minPrice) / (maxPrice - minPrice || 1)) * (height - paddingTop - paddingBottom);
+
+  // 2. Faint Grid Lines
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 3; i++) {
+    const y = (height / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width - paddingRight, y);
+    ctx.stroke();
+  }
+
+  // 3. Smooth Glowing Line Chart
+  ctx.save();
+  ctx.shadowColor = 'rgba(255, 255, 255, 0.4)';
+  ctx.shadowBlur = 8;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+
+  for (let i = 0; i < priceHistory.length; i++) {
+    const x = getX(i);
+    const y = getY(priceHistory[i]);
+
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      const prevX = getX(i - 1);
+      const prevY = getY(priceHistory[i - 1]);
+      const cpX = (prevX + x) / 2;
+      ctx.bezierCurveTo(cpX, prevY, cpX, y, x, y);
+    }
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  // 4. Live Price Head Dot
+  const lastIndex = priceHistory.length - 1;
+  const currentPrice = priceHistory[lastIndex];
+  const headX = getX(lastIndex);
+  const headY = getY(currentPrice);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(headX, headY, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(headX, headY, 8, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 5. Dashed Price Line to Right Scale
+  ctx.setLineDash([3, 3]);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.beginPath();
+  ctx.moveTo(headX, headY);
+  ctx.lineTo(width - paddingRight, headY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 6. Right-side Price Tag Box
+  const tagY = Math.min(Math.max(headY - 14, 5), height - 33);
+  ctx.fillStyle = '#182d38';
+  ctx.beginPath();
+  ctx.roundRect(width - paddingRight + 4, tagY, 58, 28, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#00f2fe';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = '#888888';
+  ctx.font = '9px sans-serif';
+  ctx.fillText('100%', width - paddingRight + 8, tagY + 11);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 10px monospace';
+  ctx.fillText(currentPrice.toFixed(2), width - paddingRight + 8, tagY + 23);
+}
+
+ function renderDigits(){
   const row = document.getElementById('digitsRow');
   row.innerHTML = '';
   document.getElementById('digitsRow').style.display = modeConfig[currentMode].showDigits ? 'grid' : 'none';
