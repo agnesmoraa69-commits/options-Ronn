@@ -196,7 +196,10 @@
       <button onclick="zoomChart(1)">+</button>
       <button onclick="zoomChart(-1)">−</button>
     </div>
-    <div class="symbol-dropdown" id="symbolDropdown" style="max-height:260px; overflow-y:auto;">
+  <div class="symbol-dropdown" id="symbolDropdown" style="max-height:280px; overflow-y:auto;">
+  <div style="display:flex; justify-content:flex-end; padding:4px;">
+    <button onclick="toggleSymbolDropdown()" style="background:#2a1f4a; border:none; color:#fff; width:28px; height:28px; border-radius:6px; font-size:16px;">✕</button>
+  </div>  
   <div class="symbol-opt active" onclick="pickSymbol('Vol 10 (1s)')">⚡ Volatility 10 (1s) Index <span class="dot"></span></div>
   <div class="symbol-opt" onclick="pickSymbol('Vol 10')">⚡ Volatility 10 Index</div>
   <div class="symbol-opt" onclick="pickSymbol('Vol 15 (1s)')">⚡ Volatility 15 (1s) Index</div>
