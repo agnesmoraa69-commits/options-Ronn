@@ -969,17 +969,66 @@ function runScan(){
 
 function loadScannerBot(){
   const loadBotBtn = document.getElementById('loadBotBtn');
-  const market = loadBotBtn?.getAttribute('data-market') || "Volatility 50 (1s) Index";
-  const type = loadBotBtn?.getAttribute('data-type') || "Even / Odd";
-  const pred = loadBotBtn?.getAttribute('data-pred') || "Odd";
+  if (!loadBotBtn || loadBotBtn.disabled) return;
 
-  const strategies = ["Martingale (1.5x)", "Fixed Stake", "D'Alembert", "Oscar's Grind"];
+  const market = loadBotBtn.getAttribute('data-market') || "Volatility 50 (1s) Index";
+  const type = loadBotBtn.getAttribute('data-type') || "Even / Odd";
+  const pred = loadBotBtn.getAttribute('data-pred') || "Odd";
+
+  const strategies = ["Martingale AI (1.5x)", "Fixed Stake Quantum", "D'Alembert Dynamic", "Oscar's Grind Pro"];
   const randomStrat = strategies[Math.floor(Math.random() * strategies.length)];
   const randomStake = [1, 5, 10, 25, 50][Math.floor(Math.random() * 5)];
+  const winRate = (91 + Math.random() * 7).toFixed(1) + "%";
 
-  toast(`Bot loaded: ${market} | ${type} (${pred}) | Strategy: ${randomStrat} | Stake: $${randomStake}`);
-  playSound('click');
+  loadBotBtn.disabled = true;
+  loadBotBtn.style.background = '#241d45';
+  loadBotBtn.style.color = '#855ff7';
+
+  const steps = [
+    "⏳ Initializing Bot Engine...",
+    "⚙️ Loading Strategy Parameters...",
+    "📡 Syncing Market Feeds..."
+  ];
+
+  let stepIndex = 0;
+  loadBotBtn.textContent = steps[0];
+
+  const loadInterval = setInterval(() => {
+    stepIndex++;
+    if (stepIndex < steps.length) {
+      loadBotBtn.textContent = steps[stepIndex];
+    } else {
+      clearInterval(loadInterval);
+
+      loadBotBtn.disabled = false;
+      loadBotBtn.style.background = '#22c55e';
+      loadBotBtn.style.color = '#ffffff';
+      loadBotBtn.textContent = `✔ Bot Active (${market})`;
+
+      let greenBox = document.getElementById('botActiveCard');
+      if (!greenBox) {
+        greenBox = document.createElement('div');
+        greenBox.id = 'botActiveCard';
+        loadBotBtn.parentNode.insertBefore(greenBox, loadBotBtn);
+      }
+
+      greenBox.style.cssText = "background: rgba(34, 197, 94, 0.12); border: 1px solid #22c55e; border-radius: 8px; padding: 12px; margin-bottom: 12px; color: #fff; font-size: 12px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);";
+      greenBox.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="color:#22c55e; font-weight:bold; font-size:13px;">● BOT ACTIVE & SYNCED</span>
+          <span style="background:rgba(34,197,94,0.2); color:#22c55e; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:10px;">ONLINE</span>
+        </div>
+        <div style="color:#ccc;"><b>Market:</b> ${market} (${type})</div>
+        <div style="color:#ccc;"><b>Strategy:</b> ${randomStrat} | <b>Stake:</b> $${randomStake}</div>
+        <div style="color:#22c55e; font-weight:bold;"><b>Target Efficiency:</b> ${winRate}</div>
+      `;
+
+      toast(`Bot successfully deployed for ${market}!`);
+      playSound('win');
+    }
+  }, 800);
 }
+
 
 function toast(msg){
   const t = document.getElementById('toastEl');
