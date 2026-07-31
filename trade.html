@@ -101,8 +101,8 @@
   .pos-item .bal { font-size:11px; color:#999; text-align:right; display:block; }
   .win-c { color:#4ade80; } .loss-c { color:#f87171; } .stake-c { color:#facc15; }
   .session-bar { position:fixed; bottom:56px; left:0; right:0; background:#1a1430; padding:8px 16px; font-size:12px; display:flex; justify-content:space-between; color:#999; }
-  .bottom-nav { position:fixed; bottom:0; left:0; right:0; background:#140f28; display:flex; justify-content:space-around; padding:8px 0; border-top:1px solid #2a2050; z-index:10; }
-  .nav-item { text-align:center; color:#999; font-size:11px; background:none; border:none; cursor:pointer; }
+  .bottom-nav { position:fixed; bottom:0; left:0; right:0; background:#140f28; display:flex; justify-around:center; padding:8px 0; border-top:1px solid #2a2050; z-index:10; }
+  .nav-item { text-align:center; color:#999; font-size:11px; background:none; border:none; cursor:pointer; flex:1; }
   .nav-item.active { color:#a855f7; }
   .nav-item .ic { font-size:18px; display:block; }
   .drawer { position:fixed; top:0; left:0; bottom:0; width:82%; max-width:340px; background:#140f28; transform:translateX(-100%); transition:0.25s; z-index:30; overflow-y:auto; }
@@ -133,7 +133,6 @@
   .pay-method .arrow { margin-left:auto; color:#888; }
   .trust-row { display:flex; justify-content:center; gap:16px; font-size:11px; color:#a78bfa; padding:12px 0 4px; }
   .close-x { background:none; border:none; color:#fff; font-size:18px; cursor:pointer; }
-  .ai-modal-body p { color:#999; font-size:13px; line-height:1.5; margin-bottom:16px; }
   .ai-field label { font-size:12px; color:#aaa; display:block; margin-bottom:6px; }
   .ai-select { width:100%; background:#140f28; border:1px solid #2a2050; color:#fff; padding:12px; border-radius:8px; font-size:14px; margin-bottom:16px; }
   .scan-row { display:flex; justify-content:space-between; font-size:13px; color:#999; margin-bottom:6px; }
@@ -145,7 +144,6 @@
   .toast.show { opacity:1; }
   .form-input { width:100%; padding:12px; background:#140f28; border:1px solid #2a2050; border-radius:8px; color:#fff; font-size:14px; margin-top:8px; margin-bottom:14px; }
   .action-btn { width:100%; background:#7b2ff7; border:none; color:#fff; padding:14px; border-radius:10px; font-weight:bold; font-size:15px; cursor:pointer; }
-  input[type=checkbox] { width:auto; }
 </style>
 </head>
 <body>
@@ -318,18 +316,20 @@ let darkOn = true;
 let scanInterval = null;
 let currentUser = null;
 let openTrades = [];
-let isExecutingTrade = false; // State lock to prevent race conditions
+let isExecutingTrade = false; // State lock to prevent execution deadlocks
 
 const SUPABASE_URL = 'https://qmzhzkwrinmfhodsdaio.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_08YlsDvQpZ7bxjA_YV4kXQ_HVEpOfFJ';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Web Audio API Sound Synthesizer
+// Sound Synthesizer with Autoplay Policy Resume
 let audioCtx = null;
 function playSound(type) {
   if (muted) return;
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
@@ -585,7 +585,7 @@ function toggleSymbolDropdown(){
   document.getElementById('symbolDropdown').classList.toggle('show');
 }
 
-// EXECUTE TRADE CONTRACT WITH RPC & DATABASE LOCK
+// SECURE RPC-DRIVEN TRADE EXECUTION PIPELINE
 async function placeTrade(side){
   if (isExecutingTrade) return;
   const bal = balance[activeAccount];
@@ -593,12 +593,14 @@ async function placeTrade(side){
   
   isExecutingTrade = true;
   playSound('click');
+
   const btn = document.getElementById(side==='left'?'leftBtn':'rightBtn');
   btn.classList.add('flash');
   setTimeout(()=>btn.classList.remove('flash'), 600);
 
   const label = side==='left' ? document.getElementById('leftLabel').textContent : document.getElementById('rightLabel').textContent;
 
+  // Optimistic UI update
   balance[activeAccount] -= stake;
   updateBalance();
 
@@ -614,51 +616,60 @@ async function placeTrade(side){
   openTrades.push(openItem);
   renderOpenTrades();
 
-  const interval = setInterval(async () => {
-    openItem.ticksLeft--;
+  try {
+    // 3-second contract duration delay
+    await new Promise((resolve) => {
+      const interval = setInterval(() => {
+        openItem.ticksLeft--;
+        renderOpenTrades();
+        if (openItem.ticksLeft <= 0) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 1000);
+    });
+
+    openTrades = openTrades.filter(t => t.id !== tradeId);
     renderOpenTrades();
 
-    if(openItem.ticksLeft <= 0){
-      clearInterval(interval);
-      openTrades = openTrades.filter(t => t.id !== tradeId);
-      renderOpenTrades();
+    // Query backend RPC for final trade resolution
+    const { data, error } = await sb.rpc('execute_trade', {
+      p_account_type: activeAccount,
+      p_mode: currentMode,
+      p_side: label,
+      p_target_digit: selectedDigit,
+      p_stake: stake
+    });
 
-      // Query Supabase for authoritative trade outcome
-      const { data, error } = await sb.rpc('execute_trade', {
-        p_account_type: activeAccount,
-        p_mode: currentMode,
-        p_side: label,
-        p_target_digit: selectedDigit,
-        p_stake: stake
-      });
-
-      if(error || !data){
-        toast('Trade execution error');
-        balance[activeAccount] += stake;
-        updateBalance();
-        isExecutingTrade = false;
-        return;
-      }
-
-      const win = data.win;
-      const netAmt = data.net_amount;
-      const newBal = data.new_balance;
-
-      balance[activeAccount] = newBal;
-      updateBalance();
-
-      if(win){
-        playSound('win');
-        toast('Win +$' + (stake + netAmt).toFixed(2));
-      } else {
-        playSound('loss');
-        toast('Loss -$' + stake.toFixed(2));
-      }
-
-      await loadTransactions();
-      isExecutingTrade = false;
+    if(error || !data){
+      throw new Error(error ? error.message : 'Trade execution failed on server');
     }
-  }, 1000);
+
+    const win = data.win;
+    const netAmt = data.net_amount;
+    balance[activeAccount] = data.new_balance;
+    updateBalance();
+
+    if(win){
+      playSound('win');
+      toast('Win +$' + (stake + netAmt).toFixed(2));
+    } else {
+      playSound('loss');
+      toast('Loss -$' + stake.toFixed(2));
+    }
+
+    await loadTransactions();
+  } catch (err) {
+    toast(err.message || 'Execution error');
+    // Revert optimistic deduction on RPC error
+    balance[activeAccount] += stake;
+    updateBalance();
+    openTrades = openTrades.filter(t => t.id !== tradeId);
+    renderOpenTrades();
+    if (autoRunning) stopAuto();
+  } finally {
+    isExecutingTrade = false;
+  }
 }
 
 function renderOpenTrades(){
@@ -796,28 +807,49 @@ function openModal(type){
   }
 }
 
+// SERVER RPC WALLET TRANSACTION HANDLING
 async function processDeposit(){
   const amt = parseFloat(document.getElementById('depositAmt').value) || 0;
   if(amt <= 0){ toast('Enter a valid amount'); return; }
-  balance[activeAccount] += amt;
-  updateBalance();
-  const balCol = activeAccount === 'demo' ? 'demo_balance' : 'real_balance';
-  await sb.from('profiles').update({ [balCol]: balance[activeAccount] }).eq('id', currentUser.id);
-  closeAll();
-  playSound('win');
-  toast('Deposited $' + amt.toFixed(2) + ' successfully!');
+
+  try {
+    const { data, error } = await sb.rpc('process_wallet_transaction', {
+      p_account_type: activeAccount,
+      p_type: 'deposit',
+      p_amount: amt
+    });
+
+    if (error) throw error;
+    balance[activeAccount] = data.new_balance;
+    updateBalance();
+    closeAll();
+    playSound('win');
+    toast('Deposited $' + amt.toFixed(2) + ' successfully!');
+  } catch(err) {
+    toast('Deposit failed: ' + (err.message || 'Server error'));
+  }
 }
 
 async function processWithdrawal(){
   const amt = parseFloat(document.getElementById('withdrawAmt').value) || 0;
   if(amt <= 0 || amt > balance[activeAccount]){ toast('Invalid or insufficient funds'); return; }
-  balance[activeAccount] -= amt;
-  updateBalance();
-  const balCol = activeAccount === 'demo' ? 'demo_balance' : 'real_balance';
-  await sb.from('profiles').update({ [balCol]: balance[activeAccount] }).eq('id', currentUser.id);
-  closeAll();
-  playSound('click');
-  toast('Withdrawal of $' + amt.toFixed(2) + ' submitted!');
+
+  try {
+    const { data, error } = await sb.rpc('process_wallet_transaction', {
+      p_account_type: activeAccount,
+      p_type: 'withdraw',
+      p_amount: amt
+    });
+
+    if (error) throw error;
+    balance[activeAccount] = data.new_balance;
+    updateBalance();
+    closeAll();
+    playSound('click');
+    toast('Withdrawal of $' + amt.toFixed(2) + ' submitted!');
+  } catch(err) {
+    toast('Withdrawal failed: ' + (err.message || 'Server error'));
+  }
 }
 
 function selectPay(el, type){
@@ -860,7 +892,7 @@ function toast(msg){
   window._toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
 }
 
-// --- Auto-trading loop with async lock wait ---
+// NON-BLOCKING RECURSIVE AUTO-TRADE ENGINE
 let autoRunning = false;
 let autoTimer = null;
 
@@ -880,6 +912,7 @@ function stopAuto(){
 
 async function runAutoStep(side){
   if(!autoRunning) return;
+
   const targetProfit = parseFloat(document.getElementById('targetProfit').value) || 999999;
   const stopLoss = parseFloat(document.getElementById('stopLoss').value) || 999999;
 
@@ -896,17 +929,11 @@ async function runAutoStep(side){
 
   await placeTrade(side);
   
-  if(!autoRunning) return;
+  if (!autoRunning) return;
 
-  // Poll until active trade completes before scheduling next step
-  const checkLock = setInterval(() => {
-    if (!isExecutingTrade) {
-      clearInterval(checkLock);
-      if (autoRunning) {
-        autoTimer = setTimeout(() => runAutoStep(side), 1000);
-      }
-    }
-  }, 200);
+  autoTimer = setTimeout(() => {
+    if (autoRunning) runAutoStep(side);
+  }, 1000);
 }
 
 // Initialization
