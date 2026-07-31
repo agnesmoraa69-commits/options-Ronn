@@ -586,9 +586,16 @@ function pickSymbol(name){
   toast('Switched market to ' + name);
   drawChart();
   playSound('click');
-}
 function toggleSymbolDropdown(){
-  document.getElementById('symbolDropdown').classList.toggle('show');
+  const dd = document.getElementById('symbolDropdown');
+  const isShowing = dd.classList.contains('show');
+  if(isShowing){
+    dd.classList.remove('show');
+    document.getElementById('overlay').classList.remove('show');
+  } else {
+    dd.classList.add('show');
+    document.getElementById('overlay').classList.add('show');
+  }
 }
 
 // SECURE RPC-DRIVEN TRADE EXECUTION PIPELINE
