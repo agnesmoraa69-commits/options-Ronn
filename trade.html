@@ -586,6 +586,7 @@ function pickSymbol(name){
   toast('Switched market to ' + name);
   drawChart();
   playSound('click');
+}
 function toggleSymbolDropdown(){
   const dd = document.getElementById('symbolDropdown');
   const isShowing = dd.classList.contains('show');
