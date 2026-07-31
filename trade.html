@@ -196,11 +196,17 @@
       <button onclick="zoomChart(1)">+</button>
       <button onclick="zoomChart(-1)">−</button>
     </div>
-    <div class="symbol-dropdown" id="symbolDropdown">
-      <div class="symbol-opt active" onclick="pickSymbol('Vol 10 (1s)')">⚡ Volatility 10 (1s) Index <span class="dot"></span></div>
-      <div class="symbol-opt" onclick="pickSymbol('Vol 10')">⚡ Volatility 10 Index</div>
-      <div class="symbol-opt" onclick="pickSymbol('Vol 25 (1s)')">⚡ Volatility 25 (1s) Index</div>
-      <div class="symbol-opt" onclick="pickSymbol('Vol 75 (1s)')">⚡ Volatility 75 (1s) Index</div>
+    <div class="symbol-dropdown" id="symbolDropdown" style="max-height:260px; overflow-y:auto;">
+  <div class="symbol-opt active" onclick="pickSymbol('Vol 10 (1s)')">⚡ Volatility 10 (1s) Index <span class="dot"></span></div>
+  <div class="symbol-opt" onclick="pickSymbol('Vol 10')">⚡ Volatility 10 Index</div>
+  <div class="symbol-opt" onclick="pickSymbol('Vol 15 (1s)')">⚡ Volatility 15 (1s) Index</div>
+  <div class="symbol-opt" onclick="pickSymbol('Vol 25 (1s)')">⚡ Volatility 25 (1s) Index</div>
+  <div class="symbol-opt" onclick="pickSymbol('Vol 25')">⚡ Volatility 25 Index</div>
+  <div class="symbol-opt" onclick="pickSymbol('Vol 30 (1s)')">⚡ Volatility 30 (1s) Index</div>
+  <div class="symbol-opt" onclick="pickSymbol('Vol 50 (1s)')">⚡ Volatility 50 (1s) Index</div>
+  <div class="symbol-opt" onclick="pickSymbol('Vol 50')">⚡ Volatility 50 Index</div>
+  <div class="symbol-opt" onclick="pickSymbol('Vol 75 (1s)')">⚡ Volatility 75 (1s) Index</div>
+  <div class="symbol-opt" onclick="pickSymbol('Vol 75')">⚡ Volatility 75 Index</div>
     </div>
     <svg id="chartSvg" viewBox="0 0 300 100" preserveAspectRatio="none">
       <polyline id="chartLine" fill="none" stroke="#fff" stroke-width="1.5" points=""/>
