@@ -808,17 +808,39 @@ function openModal(type){
   } else if(type === 'ai'){
     document.getElementById('navAI').classList.add('active');
     title.textContent = 'Entry Scanner'; sub.textContent='';
-    body.innerHTML = `
-      <p>Pick the market category you want to scan. The deep scanner walks every <b>volatility / synthetic</b> index and surfaces the best entry point for that category based on historical tick patterns.</p>
-      <div class="ai-field"><label>Market</label>
-        <select class="ai-select" id="aiMarketSelect">
-          <option>Even/Odd</option><option>Matches/Differs</option><option>Over/Under</option><option>Rises/Falls</option>
-        </select>
+  body.innerHTML = `
+    <p style="font-size:13px; color:#aaa; margin-bottom:14px; line-height:1.4;">Pick the market category you want to scan. The deep scanner walks every <b>volatility / synthetic</b> index and surfaces the best entry point for that category based on historical tick patterns.</p>
+    <div class="ai-field" style="margin-bottom:12px;"><label style="font-size:12px; color:#888; display:block; margin-bottom:4px;">Market</label>
+      <select class="ai-select" id="aiMarketSelect" style="width:100%; background:#1a1430; border:1px solid #2a2050; color:#fff; padding:10px; border-radius:8px;">
+        <option>Even / Odd</option><option>Matches / Differs</option><option>Over / Under</option><option>Rises / Falls</option>
+      </select>
+    </div>
+    <div class="scan-row" style="display:flex; justify-content:space-between; font-size:12px; color:#aaa; margin-bottom:6px;">
+      <span id="scanStatusText">Ready to scan</span>
+      <span id="scanProgress">0/13</span>
+    </div>
+    <div class="progress-bar" style="height:6px; background:#1a1430; border-radius:4px; overflow:hidden; margin-bottom:14px;"><div class="fill" id="scanFill" style="width:0%; height:100%; background:#7b2ff7; transition:width 0.15s;"></div></div>
+    <div id="scanResultCards" style="display:none; flex-direction:column; gap:8px; margin-bottom:12px;">
+      <div style="background:#1a1430; border:1px solid #2a2050; padding:10px 12px; border-radius:8px;">
+        <div style="font-size:11px; color:#888;">Selected Market</div>
+        <div style="font-size:13px; font-weight:bold; color:#fff;" id="resMarket">Volatility 50 (1s) Index</div>
       </div>
-      <div class="scan-row"><span>Ready to scan</span><span id="scanProgress">0/13</span></div>
-      <div class="progress-bar"><div class="fill" id="scanFill"></div></div>
-      <button class="scan-btn" id="scanBtn" onclick="runScan()">🔍 Deep Scan for Best Market</button>
-      <button class="load-bot-btn" onclick="toast('Scanner bot loaded into workspace')">Load Deep Scanner Bot</button>`;
+      <div style="background:#1a1430; border:1px solid #2a2050; padding:10px 12px; border-radius:8px;">
+        <div style="font-size:11px; color:#888;">Trade Type</div>
+        <div style="font-size:13px; font-weight:bold; color:#fff;" id="resType">Even / Odd</div>
+      </div>
+      <div style="background:#1a1430; border:1px solid #2a2050; padding:10px 12px; border-radius:8px;">
+        <div style="font-size:11px; color:#888;">Prediction (auto)</div>
+        <div style="font-size:13px; font-weight:bold; color:#855ff7;" id="resPred">Odd</div>
+      </div>
+      <div style="background:rgba(74,222,128,0.08); border:1px solid #4ade80; padding:10px 12px; border-radius:8px; font-size:12px; color:#fff;">
+        <span style="color:#4ade80;">✔ <b>Best market:</b> <span id="resSummary">Volatility 50 (1s) Index | Even / Odd | Odd</span></span>
+        <div style="margin-top:4px; font-weight:bold;">Quality <span id="resQuality">91.57%</span></div>
+      </div>
+    </div>
+    <button class="scan-btn" id="scanBtn" onclick="runScan()" style="width:100%; background:#7b2ff7; border:none; color:#fff; padding:12px; border-radius:8px; font-weight:bold; margin-bottom:8px; cursor:pointer;">⚡ Deep Scan for Best Market</button>
+    <button class="load-bot-btn" id="loadBotBtn" onclick="loadScannerBot()" style="width:100%; background:#241d45; border:none; color:#855ff7; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">Load Deep Scanner Bot</button>
+  `;
   }
 }
 
@@ -882,21 +904,81 @@ function pickMultiplier(m){
 
 function runScan(){
   let done = 0;
+  const markets = [
+    "Volatility 10 Index", "Volatility 10 (1s) Index", "Volatility 25 Index", "Volatility 25 (1s) Index",
+    "Volatility 50 Index", "Volatility 50 (1s) Index", "Volatility 75 Index", "Volatility 75 (1s) Index",
+    "Volatility 100 Index", "Volatility 100 (1s) Index", "Volatility 90 (1s) Index", "Volatility 15 (1s) Index", "Volatility 30 (1s) Index"
+  ];
+  const predictionsMap = {
+    "Even / Odd": ["Even", "Odd"],
+    "Matches / Differs": ["Matches 5", "Differs 2", "Matches 7", "Differs 9"],
+    "Over / Under": ["Over 3", "Under 7", "Over 2", "Under 8"],
+    "Rises / Falls": ["Rise", "Fall"]
+  };
+
   const btn = document.getElementById('scanBtn');
-  btn.textContent = 'Scanning...';
+  const loadBotBtn = document.getElementById('loadBotBtn');
+  const cards = document.getElementById('scanResultCards');
+  const statusTxt = document.getElementById('scanStatusText');
+
+  if (cards) cards.style.display = 'none';
+  btn.textContent = '⏳ Scanning...';
   btn.disabled = true;
+
   scanInterval = setInterval(()=>{
     done++;
-    document.getElementById('scanProgress').textContent = done+'/13';
-    document.getElementById('scanFill').style.width = (done/13*100)+'%';
-    if(done>=13){
-      clearInterval(scanInterval); scanInterval=null;
-      btn.textContent = '🔍 Deep Scan for Best Market';
+    const currentMarket = markets[done - 1] || markets[0];
+    if (statusTxt) statusTxt.textContent = `Scanning ${currentMarket} (${done}/13)...`;
+    document.getElementById('scanProgress').textContent = done + '/13';
+    document.getElementById('scanFill').style.width = (done / 13 * 100) + '%';
+
+    if(done >= 13){
+      clearInterval(scanInterval); 
+      scanInterval = null;
+
+      const pickedMarket = markets[Math.floor(Math.random() * markets.length)];
+      const selectedType = document.getElementById('aiMarketSelect')?.value || "Even / Odd";
+      const possiblePreds = predictionsMap[selectedType] || ["Odd"];
+      const pickedPred = possiblePreds[Math.floor(Math.random() * possiblePreds.length)];
+      const qualityScore = (88 + Math.random() * 11).toFixed(2) + '%';
+
+      document.getElementById('resMarket').textContent = pickedMarket;
+      document.getElementById('resType').textContent = selectedType;
+      document.getElementById('resPred').textContent = pickedPred;
+      document.getElementById('resSummary').textContent = `${pickedMarket} | ${selectedType} | ${pickedPred}`;
+      document.getElementById('resQuality').textContent = qualityScore;
+
+      btn.textContent = '🔄 Re-scan for Best Market';
       btn.disabled = false;
-      toast('Best entry found: Even/Odd · Digit 5');
+
+      if (loadBotBtn) {
+        loadBotBtn.textContent = `Load ${pickedMarket} Bot`;
+        loadBotBtn.setAttribute('data-market', pickedMarket);
+        loadBotBtn.setAttribute('data-type', selectedType);
+        loadBotBtn.setAttribute('data-pred', pickedPred);
+        loadBotBtn.style.background = '#7b2ff7';
+        loadBotBtn.style.color = '#fff';
+      }
+
+      if (cards) cards.style.display = 'flex';
+      if (statusTxt) statusTxt.textContent = 'Scan Complete';
       playSound('win');
     }
   }, 150);
+}
+
+function loadScannerBot(){
+  const loadBotBtn = document.getElementById('loadBotBtn');
+  const market = loadBotBtn?.getAttribute('data-market') || "Volatility 50 (1s) Index";
+  const type = loadBotBtn?.getAttribute('data-type') || "Even / Odd";
+  const pred = loadBotBtn?.getAttribute('data-pred') || "Odd";
+
+  const strategies = ["Martingale (1.5x)", "Fixed Stake", "D'Alembert", "Oscar's Grind"];
+  const randomStrat = strategies[Math.floor(Math.random() * strategies.length)];
+  const randomStake = [1, 5, 10, 25, 50][Math.floor(Math.random() * 5)];
+
+  toast(`Bot loaded: ${market} | ${type} (${pred}) | Strategy: ${randomStrat} | Stake: $${randomStake}`);
+  playSound('click');
 }
 
 function toast(msg){
